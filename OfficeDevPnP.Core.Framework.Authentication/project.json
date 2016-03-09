@@ -1,4 +1,4 @@
-﻿{
+{
   "version": "1.0.0-*",
   "description": "OfficeDevPnP.Core.Framework.Authentication Class Library",
   "authors": [ "Radi" ],
@@ -9,12 +9,22 @@
   "dependencies": {
     "Microsoft.AspNet.Authentication": "1.0.0-rc1-final",
     "Microsoft.SharePointOnline.CSOM": "16.1.4727.1200",
-    "System.IdentityModel.Tokens.Jwt": "5.0.0-rc1-*",
-    "Microsoft.AspNet.Authentication.OAuth": "1.0.0-rc1-final"
+    "Microsoft.AspNet.Authentication.OAuth": "1.0.0-rc1-final",
+    "Microsoft.IdentityModel": "6.1.7600.16394"
   },
 
   "frameworks": {
-    "net451": { },
+    "net451": {
+      "dependencies": {
+        "Microsoft.IdentityModel.Extensions": "1.0.0-*"
+      },
+      "frameworkAssemblies": {
+        "System.IdentityModel": "4.0.0.0",
+        "System.IdentityModel.Selectors": "4.0.0.0",
+        "System.ServiceModel": "4.0.0.0",
+        "System.Web": "4.0.0.0"
+      }
+    },
     }
   }
 

@@ -2,7 +2,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
+using System.Security.Principal;
 using System.Threading.Tasks;
+using System.Web;
+using Microsoft.AspNet.Http.Authentication;
 using Microsoft.AspNet.Http.Features.Authentication;
 
 namespace OfficeDevPnP.Core.Framework.Authentication
@@ -11,7 +15,38 @@ namespace OfficeDevPnP.Core.Framework.Authentication
     {
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
-            
+            AuthenticateResult result = AuthenticateResult.Failed("Could not get the RedirectionStatus");
+            var abstractContext = new System.Web.HttpContextWrapper(System.Web.HttpContext.Current);
+            Uri redirectUrl;
+            switch (SharePointContextProvider.CheckRedirectionStatus(abstractContext, out redirectUrl))
+            {
+                case RedirectionStatus.Ok:
+                    var principal = new ClaimsPrincipal();
+                    var spContext = SharePointContextProvider.Current.GetSharePointContext(abstractContext);
+                    using (var clientContext = spContext.CreateUserClientContextForSPHost())
+                    {
+                        if (clientContext != null)
+                        {
+                            GenericIdentity identity = new GenericIdentity(clientContext.Web.CurrentUser.LoginName);
+                            //clientContext.Load(spUser, user => user.Title);
+                            //clientContext.ExecuteQuery();
+                            //ViewBag.UserName = spUser.Title;
+                            principal.AddIdentity(identity);
+                            result =
+                                AuthenticateResult.Success(new AuthenticationTicket(principal,
+                                    new AuthenticationProperties(), "sharepoint"));
+                        }
+                    }
+                    break;
+                case RedirectionStatus.ShouldRedirect:
+                    //filterContext.Result = new RedirectResult(redirectUrl.AbsoluteUri);
+                    result = AuthenticateResult.Failed("ShouldRedirect");
+                    break;
+                case RedirectionStatus.CanNotRedirect:
+                    result = AuthenticateResult.Failed("CanNotRedirect");
+                    break;
+            }
+            return new Task<AuthenticateResult>(() => result);
         }
 
         protected override Task HandleSignInAsync(SignInContext context)

@@ -1,34 +1,33 @@
-﻿using Microsoft.AspNet.Authentication.OAuth;
-using Microsoft.AspNet.Http;
-using Microsoft.SharePoint.Client;
-using Microsoft.SharePoint.Client.EventReceivers;
-using Newtonsoft.Json;
-using OfficeDevPnP.Core.Framework.Authentication.S2S;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Globalization;
+using System.IdentityModel.Selectors;
 using System.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Security.Claims;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Principal;
+using System.ServiceModel;
 using System.Text;
-using System.Threading.Tasks;
+using System.Web;
+using System.Web.Configuration;
+using Microsoft.IdentityModel;
+using Microsoft.IdentityModel.S2S.Protocols.OAuth2;
+using Microsoft.IdentityModel.S2S.Tokens;
+using Microsoft.SharePoint.Client;
+using Microsoft.SharePoint.Client.EventReceivers;
+using Newtonsoft.Json;
+using AudienceRestriction = Microsoft.IdentityModel.Tokens.AudienceRestriction;
+using AudienceUriValidationFailedException = Microsoft.IdentityModel.Tokens.AudienceUriValidationFailedException;
+using SecurityTokenHandlerConfiguration = Microsoft.IdentityModel.Tokens.SecurityTokenHandlerConfiguration;
+using X509SigningCredentials = Microsoft.IdentityModel.SecurityTokenService.X509SigningCredentials;
 
 namespace OfficeDevPnP.Core.Framework.Authentication
 {
-    public class TokenHelper
+    public static class TokenHelper
     {
-
-        static TokenHelper()
-        {
-
-        }
-
-
         #region public fields
 
         /// <summary>
@@ -51,10 +50,10 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// </summary>
         /// <param name="request">HttpRequest in which to look for a context token</param>
         /// <returns>The context token string</returns>
-        //public static string GetContextTokenFromRequest(HttpRequest request)
-        //{
-        //    return GetContextTokenFromRequest(new HttpRequestWrapper(request));
-        //}
+        public static string GetContextTokenFromRequest(HttpRequest request)
+        {
+            return GetContextTokenFromRequest(new HttpRequestWrapper(request));
+        }
 
         /// <summary>
         /// Retrieves the context token string from the specified request by looking for well-known parameter names in the 
@@ -62,7 +61,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// </summary>
         /// <param name="request">HttpRequest in which to look for a context token</param>
         /// <returns>The context token string</returns>
-        public static string GetContextTokenFromRequest(HttpRequest request)
+        public static string GetContextTokenFromRequest(HttpRequestBase request)
         {
             string[] paramNames = { "AppContext", "AppContextToken", "AccessToken", "SPAppToken" };
             foreach (string paramName in paramNames)
@@ -71,9 +70,9 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 {
                     return request.Form[paramName];
                 }
-                if (!string.IsNullOrEmpty(request.Query[paramName]))
+                if (!string.IsNullOrEmpty(request.QueryString[paramName]))
                 {
-                    return request.Query[paramName];
+                    return request.QueryString[paramName];
                 }
             }
             return null;
@@ -95,9 +94,9 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <returns>A JsonWebSecurityToken based on the context token.</returns>
         public static SharePointContextToken ReadAndValidateContextToken(string contextTokenString, string appHostName = null)
         {
-            JwtSecurityTokenHandler tokenHandler = CreateJsonWebSecurityTokenHandler();
+            JsonWebSecurityTokenHandler tokenHandler = CreateJsonWebSecurityTokenHandler();
             SecurityToken securityToken = tokenHandler.ReadToken(contextTokenString);
-            JwtSecurityToken jsonToken = securityToken as JwtSecurityToken;
+            JsonWebSecurityToken jsonToken = securityToken as JsonWebSecurityToken;
             SharePointContextToken token = SharePointContextToken.Create(jsonToken);
 
             string stsAuthority = (new Uri(token.SecurityTokenServiceUri)).Authority;
@@ -106,9 +105,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             GlobalEndPointPrefix = stsAuthority.Substring(0, firstDot);
             AcsHostUrl = stsAuthority.Substring(firstDot + 1);
 
-            SecurityToken validationToken;
-            //set parameters TODO
-            tokenHandler.ValidateToken(jsonToken.ToString(), null, out validationToken);
+            tokenHandler.ValidateToken(jsonToken);
 
             string[] acceptableAudiences;
             if (!String.IsNullOrEmpty(HostedAppHostNameOverride))
@@ -129,7 +126,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             foreach (var audience in acceptableAudiences)
             {
                 string principal = GetFormattedPrincipal(ClientId, audience, realm);
-                if (StringComparer.OrdinalIgnoreCase.Equals(token.Audiences.FirstOrDefault(), principal))
+                if (StringComparer.OrdinalIgnoreCase.Equals((string) token.Audience, principal))
                 {
                     validationSuccessful = true;
                     break;
@@ -138,10 +135,9 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
             if (!validationSuccessful)
             {
-                throw new Exception(
+                throw new AudienceUriValidationFailedException(
                     String.Format(CultureInfo.CurrentCulture,
-                    "\"{0}\" is not the intended audience \"{1}\"", 
-                    String.Join(";", acceptableAudiences), token.Audiences.FirstOrDefault()));
+                    "\"{0}\" is not the intended audience \"{1}\"", String.Join(";", acceptableAudiences), token.Audience));
             }
 
             return token;
@@ -154,8 +150,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="contextToken">Context token issued by the intended access token audience</param>
         /// <param name="targetHost">Url authority of the target principal</param>
         /// <returns>An access token with an audience matching the context token's source</returns>
-        public static async Task<OAuth2AccessTokenResponse> GetAccessToken(SharePointContextToken contextToken,
-            string targetHost)
+        public static OAuth2AccessTokenResponse GetAccessToken(SharePointContextToken contextToken, string targetHost)
         {
             string targetPrincipalName = contextToken.TargetPrincipalName;
 
@@ -169,7 +164,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
             string targetRealm = Realm ?? contextToken.Realm;
 
-            return await GetAccessToken(refreshToken,
+            return GetAccessToken(refreshToken,
                                   targetPrincipalName,
                                   targetHost,
                                   targetRealm);
@@ -186,7 +181,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="targetRealm">Realm to use for the access token's nameid and audience</param>
         /// <param name="redirectUri">Redirect URI registerd for this app</param>
         /// <returns>An access token with an audience of the target principal</returns>
-        public static async Task<OAuth2AccessTokenResponse> GetAccessToken(
+        public static OAuth2AccessTokenResponse GetAccessToken(
             string authorizationCode,
             string targetPrincipalName,
             string targetHost,
@@ -216,7 +211,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             try
             {
                 oauth2Response =
-                    client.Issue(await AcsMetadataParser.GetStsUrl(targetRealm), oauth2Request) as OAuth2AccessTokenResponse;
+                    client.Issue(AcsMetadataParser.GetStsUrl(targetRealm), oauth2Request) as OAuth2AccessTokenResponse;
             }
             catch (WebException wex)
             {
@@ -240,7 +235,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="targetHost">Url authority of the target principal</param>
         /// <param name="targetRealm">Realm to use for the access token's nameid and audience</param>
         /// <returns>An access token with an audience of the target principal</returns>
-        public static async Task<OAuth2AccessTokenResponse> GetAccessToken(
+        public static OAuth2AccessTokenResponse GetAccessToken(
             string refreshToken,
             string targetPrincipalName,
             string targetHost,
@@ -262,7 +257,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             try
             {
                 oauth2Response =
-                    client.Issue(await AcsMetadataParser.GetStsUrl(targetRealm), oauth2Request) as OAuth2AccessTokenResponse;
+                    client.Issue(AcsMetadataParser.GetStsUrl(targetRealm), oauth2Request) as OAuth2AccessTokenResponse;
             }
             catch (WebException wex)
             {
@@ -285,7 +280,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="targetHost">Url authority of the target principal</param>
         /// <param name="targetRealm">Realm to use for the access token's nameid and audience</param>
         /// <returns>An access token with an audience of the target principal</returns>
-        public static async Task<OAuth2AccessTokenResponse> GetAppOnlyAccessToken(
+        public static OAuth2AccessTokenResponse GetAppOnlyAccessToken(
             string targetPrincipalName,
             string targetHost,
             string targetRealm)
@@ -309,7 +304,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             try
             {
                 oauth2Response =
-                    client.Issue(await AcsMetadataParser.GetStsUrl(targetRealm), oauth2Request) as OAuth2AccessTokenResponse;
+                    client.Issue(AcsMetadataParser.GetStsUrl(targetRealm), oauth2Request) as OAuth2AccessTokenResponse;
             }
             catch (WebException wex)
             {
@@ -414,7 +409,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             Uri targetUri = new Uri(targetUrl);
 
             string accessToken =
-                GetAccessToken(authorizationCode, targetPrincipalName, targetUri.Authority, targetRealm, redirectUri).Result.AccessToken;
+                GetAccessToken(authorizationCode, targetPrincipalName, targetUri.Authority, targetRealm, redirectUri).AccessToken;
 
             return GetClientContextWithAccessToken(targetUrl, accessToken);
         }
@@ -459,7 +454,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
             Uri targetUri = new Uri(targetUrl);
 
-            string accessToken = GetAccessToken(contextToken, targetUri.Authority).Result.AccessToken;
+            string accessToken = GetAccessToken(contextToken, targetUri.Authority).AccessToken;
 
             return GetClientContextWithAccessToken(targetUrl, accessToken);
         }
@@ -533,7 +528,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         {
             string realm = string.IsNullOrEmpty(Realm) ? GetRealmFromTargetUrl(targetApplicationUri) : Realm;
 
-            Claim[] claims = identity != null ? GetClaimsWithWindowsIdentity(identity) : null;
+            JsonWebTokenClaim[] claims = identity != null ? GetClaimsWithWindowsIdentity(identity) : null;
 
             return GetS2SAccessTokenWithClaims(targetApplicationUri.Authority, realm, claims);
         }
@@ -553,7 +548,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         {
             string realm = string.IsNullOrEmpty(Realm) ? GetRealmFromTargetUrl(targetApplicationUri) : Realm;
 
-            Claim[] claims = identity != null ? GetClaimsWithWindowsIdentity(identity) : null;
+            JsonWebTokenClaim[] claims = identity != null ? GetClaimsWithWindowsIdentity(identity) : null;
 
             string accessToken = GetS2SAccessTokenWithClaims(targetApplicationUri.Authority, realm, claims);
 
@@ -651,9 +646,9 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         private const string AcsMetadataEndPointRelativeUrl = "metadata/json/1";
         private const string S2SProtocol = "OAuth2";
         private const string DelegationIssuance = "DelegationIssuance1.0";
-        private const string NameIdentifierClaimType = "nameid"; //JsonWebTokenConstants.ReservedClaims.NameIdentifier;
+        private const string NameIdentifierClaimType = JsonWebTokenConstants.ReservedClaims.NameIdentifier;
         private const string TrustedForImpersonationClaimType = "trustedfordelegation";
-        private const string ActorTokenClaimType = "actortoken"; //JsonWebTokenConstants.ReservedClaims.ActorToken;
+        private const string ActorTokenClaimType = JsonWebTokenConstants.ReservedClaims.ActorToken;
 
         //
         // Environment Constants
@@ -676,10 +671,8 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
         private static readonly string ClientSigningCertificatePath = WebConfigurationManager.AppSettings.Get("ClientSigningCertificatePath");
         private static readonly string ClientSigningCertificatePassword = WebConfigurationManager.AppSettings.Get("ClientSigningCertificatePassword");
-
-        //NOT IMPLEMENTED
         private static readonly X509Certificate2 ClientCertificate = (string.IsNullOrEmpty(ClientSigningCertificatePath) || string.IsNullOrEmpty(ClientSigningCertificatePassword)) ? null : new X509Certificate2(ClientSigningCertificatePath, ClientSigningCertificatePassword);
-        private static readonly SigningCredentials SigningCredentials = (ClientCertificate == null) ? null : new SigningCredentials(null, SecurityAlgorithms.RsaSha256Signature);
+        private static readonly X509SigningCredentials SigningCredentials = (ClientCertificate == null) ? null : new X509SigningCredentials(ClientCertificate, SecurityAlgorithms.RsaSha256Signature, SecurityAlgorithms.Sha256Digest);
 
         #endregion
 
@@ -725,9 +718,9 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             return String.Format(CultureInfo.InvariantCulture, "https://{0}.{1}/", GlobalEndPointPrefix, AcsHostUrl);
         }
 
-        private static JwtSecurityTokenHandler CreateJsonWebSecurityTokenHandler()
+        private static JsonWebSecurityTokenHandler CreateJsonWebSecurityTokenHandler()
         {
-            JwtSecurityTokenHandler handler = new JwtSecurityTokenHandler();
+            JsonWebSecurityTokenHandler handler = new JsonWebSecurityTokenHandler();
             handler.Configuration = new SecurityTokenHandlerConfiguration();
             handler.Configuration.AudienceRestriction = new AudienceRestriction(AudienceUriMode.Never);
             handler.Configuration.CertificateValidator = X509CertificateValidator.None;
@@ -758,7 +751,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         private static string GetS2SAccessTokenWithClaims(
             string targetApplicationHostName,
             string targetRealm,
-            IEnumerable<Claim> claims)
+            IEnumerable<JsonWebTokenClaim> claims)
         {
             return IssueToken(
                 ClientId,
@@ -772,12 +765,12 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 claims == null);
         }
 
-        private static Claim[] GetClaimsWithWindowsIdentity(WindowsIdentity identity)
+        private static JsonWebTokenClaim[] GetClaimsWithWindowsIdentity(WindowsIdentity identity)
         {
-            Claim[] claims = new Claim[]
+            JsonWebTokenClaim[] claims = new JsonWebTokenClaim[]
             {
-                new Claim(NameIdentifierClaimType, identity.User.Value.ToLower()),
-                new Claim("nii", "urn:office:idp:activedirectory")
+                new JsonWebTokenClaim(NameIdentifierClaimType, identity.User.Value.ToLower()),
+                new JsonWebTokenClaim("nii", "urn:office:idp:activedirectory")
             };
             return claims;
         }
@@ -790,7 +783,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             string targetRealm,
             string targetApplicationHostName,
             bool trustedForDelegation,
-            IEnumerable<Claim> claims,
+            IEnumerable<JsonWebTokenClaim> claims,
             bool appOnly = false)
         {
             if (null == SigningCredentials)
@@ -804,24 +797,23 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             string nameid = string.IsNullOrEmpty(sourceRealm) ? sourceApplication : string.Format("{0}@{1}", sourceApplication, sourceRealm);
             string audience = string.Format("{0}/{1}@{2}", targetApplication, targetApplicationHostName, targetRealm);
 
-            List<Claim> actorClaims = new List<Claim>();
-            actorClaims.Add(new Claim(NameIdentifierClaimType, nameid));
+            List<JsonWebTokenClaim> actorClaims = new List<JsonWebTokenClaim>();
+            actorClaims.Add(new JsonWebTokenClaim(JsonWebTokenConstants.ReservedClaims.NameIdentifier, nameid));
             if (trustedForDelegation && !appOnly)
             {
-                actorClaims.Add(new Claim(TrustedForImpersonationClaimType, "true"));
+                actorClaims.Add(new JsonWebTokenClaim(TrustedForImpersonationClaimType, "true"));
             }
 
             // Create token
-            JwtSecurityToken actorToken = new JwtSecurityToken(
+            JsonWebSecurityToken actorToken = new JsonWebSecurityToken(
                 issuer: issuer,
                 audience: audience,
-                claims: actorClaims,
-                notBefore: DateTime.UtcNow,
-                expires: DateTime.UtcNow.Add(HighTrustAccessTokenLifetime),
-                signingCredentials: SigningCredentials
-                );
+                validFrom: DateTime.UtcNow,
+                validTo: DateTime.UtcNow.Add(HighTrustAccessTokenLifetime),
+                signingCredentials: SigningCredentials,
+                claims: actorClaims);
 
-            string actorTokenString = new JwtSecurityTokenHandler().WriteToken(actorToken);
+            string actorTokenString = new JsonWebSecurityTokenHandler().WriteTokenAsString(actorToken);
 
             if (appOnly)
             {
@@ -833,18 +825,17 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
             #region Outer token
 
-            List<Claim> outerClaims = null == claims ? new List<Claim>() : new List<Claim>(claims);
-            outerClaims.Add(new Claim(ActorTokenClaimType, actorTokenString));
+            List<JsonWebTokenClaim> outerClaims = null == claims ? new List<JsonWebTokenClaim>() : new List<JsonWebTokenClaim>(claims);
+            outerClaims.Add(new JsonWebTokenClaim(ActorTokenClaimType, actorTokenString));
 
-            JwtSecurityToken jsonToken = new JwtSecurityToken(
+            JsonWebSecurityToken jsonToken = new JsonWebSecurityToken(
                 nameid, // outer token issuer should match actor token nameid
                 audience,
-                outerClaims,
                 DateTime.UtcNow,
                 DateTime.UtcNow.Add(HighTrustAccessTokenLifetime),
-                SigningCredentials);
+                outerClaims);
 
-            string accessToken = new JwtSecurityTokenHandler().WriteToken(jsonToken);
+            string accessToken = new JsonWebSecurityTokenHandler().WriteTokenAsString(jsonToken);
 
             #endregion Outer token
 
@@ -859,9 +850,9 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         // methods to parse the MetaData document and get endpoints and STS certificate.
         public static class AcsMetadataParser
         {
-            public async static Task<X509Certificate2> GetAcsSigningCert(string realm)
+            public static X509Certificate2 GetAcsSigningCert(string realm)
             {
-                JsonMetadataDocument document = await GetMetadataDocumentAsync(realm);
+                JsonMetadataDocument document = GetMetadataDocument(realm);
 
                 if (null != document.keys && document.keys.Count > 0)
                 {
@@ -876,9 +867,9 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 throw new Exception("Metadata document does not contain ACS signing certificate.");
             }
 
-            public async static Task<string> GetDelegationServiceUrl(string realm)
+            public static string GetDelegationServiceUrl(string realm)
             {
-                JsonMetadataDocument document = await GetMetadataDocumentAsync(realm);
+                JsonMetadataDocument document = GetMetadataDocument(realm);
 
                 JsonEndpoint delegationEndpoint = document.endpoints.SingleOrDefault(e => e.protocol == DelegationIssuance);
 
@@ -889,7 +880,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 throw new Exception("Metadata document does not contain Delegation Service endpoint Url");
             }
 
-            private async static Task<JsonMetadataDocument> GetMetadataDocumentAsync(string realm)
+            private static JsonMetadataDocument GetMetadataDocument(string realm)
             {
                 string acsMetadataEndpointUrlWithRealm = String.Format(CultureInfo.InvariantCulture, "{0}?realm={1}",
                                                                        GetAcsMetadataEndpointUrl(),
@@ -902,10 +893,8 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 }
                 string jsonResponseString = Encoding.UTF8.GetString(acsMetadata);
 
-                JsonSerializer serializer = new JsonSerializer();
-                JsonMetadataDocument document = await Task.Factory.StartNew(
-                        ()=> JsonConvert.DeserializeObject<JsonMetadataDocument>(jsonResponseString)
-                    );
+                //JavaScriptSerializer serializer = new JavaScriptSerializer();
+                JsonMetadataDocument document = JsonConvert.DeserializeObject<JsonMetadataDocument>(jsonResponseString);
 
                 if (null == document)
                 {
@@ -915,9 +904,9 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 return document;
             }
 
-            public async static Task<string> GetStsUrl(string realm)
+            public static string GetStsUrl(string realm)
             {
-                JsonMetadataDocument document = await GetMetadataDocumentAsync(realm);
+                JsonMetadataDocument document = GetMetadataDocument(realm);
 
                 JsonEndpoint s2sEndpoint = document.endpoints.SingleOrDefault(e => e.protocol == S2SProtocol);
 
@@ -959,4 +948,135 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         #endregion
     }
 
+
+
+    /// <summary>
+    /// Represents a security token which contains multiple security keys that are generated using symmetric algorithms.
+    /// </summary>
+    public class MultipleSymmetricKeySecurityToken : SecurityToken
+    {
+        /// <summary>
+        /// Initializes a new instance of the MultipleSymmetricKeySecurityToken class.
+        /// </summary>
+        /// <param name="keys">An enumeration of Byte arrays that contain the symmetric keys.</param>
+        public MultipleSymmetricKeySecurityToken(IEnumerable<byte[]> keys)
+            : this(UniqueId.CreateUniqueId(), keys)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the MultipleSymmetricKeySecurityToken class.
+        /// </summary>
+        /// <param name="tokenId">The unique identifier of the security token.</param>
+        /// <param name="keys">An enumeration of Byte arrays that contain the symmetric keys.</param>
+        public MultipleSymmetricKeySecurityToken(string tokenId, IEnumerable<byte[]> keys)
+        {
+            if (keys == null)
+            {
+                throw new ArgumentNullException("keys");
+            }
+
+            if (String.IsNullOrEmpty(tokenId))
+            {
+                throw new ArgumentException("Value cannot be a null or empty string.", "tokenId");
+            }
+
+            foreach (byte[] key in keys)
+            {
+                if (key.Length <= 0)
+                {
+                    throw new ArgumentException("The key length must be greater then zero.", "keys");
+                }
+            }
+
+            id = tokenId;
+            effectiveTime = DateTime.UtcNow;
+            securityKeys = CreateSymmetricSecurityKeys(keys);
+        }
+
+        /// <summary>
+        /// Gets the unique identifier of the security token.
+        /// </summary>
+        public override string Id
+        {
+            get
+            {
+                return id;
+            }
+        }
+
+        /// <summary>
+        /// Gets the cryptographic keys associated with the security token.
+        /// </summary>
+        public override ReadOnlyCollection<SecurityKey> SecurityKeys
+        {
+            get
+            {
+                return securityKeys.AsReadOnly();
+            }
+        }
+
+        /// <summary>
+        /// Gets the first instant in time at which this security token is valid.
+        /// </summary>
+        public override DateTime ValidFrom
+        {
+            get
+            {
+                return effectiveTime;
+            }
+        }
+
+        /// <summary>
+        /// Gets the last instant in time at which this security token is valid.
+        /// </summary>
+        public override DateTime ValidTo
+        {
+            get
+            {
+                // Never expire
+                return DateTime.MaxValue;
+            }
+        }
+
+        /// <summary>
+        /// Returns a value that indicates whether the key identifier for this instance can be resolved to the specified key identifier.
+        /// </summary>
+        /// <param name="keyIdentifierClause">A SecurityKeyIdentifierClause to compare to this instance</param>
+        /// <returns>true if keyIdentifierClause is a SecurityKeyIdentifierClause and it has the same unique identifier as the Id property; otherwise, false.</returns>
+        public override bool MatchesKeyIdentifierClause(SecurityKeyIdentifierClause keyIdentifierClause)
+        {
+            if (keyIdentifierClause == null)
+            {
+                throw new ArgumentNullException("keyIdentifierClause");
+            }
+
+            // Since this is a symmetric token and we do not have IDs to distinguish tokens, we just check for the
+            // presence of a SymmetricIssuerKeyIdentifier. The actual mapping to the issuer takes place later
+            // when the key is matched to the issuer.
+            if (keyIdentifierClause is SymmetricIssuerKeyIdentifierClause)
+            {
+                return true;
+            }
+            return base.MatchesKeyIdentifierClause(keyIdentifierClause);
+        }
+
+        #region private members
+
+        private List<SecurityKey> CreateSymmetricSecurityKeys(IEnumerable<byte[]> keys)
+        {
+            List<SecurityKey> symmetricKeys = new List<SecurityKey>();
+            foreach (byte[] key in keys)
+            {
+                symmetricKeys.Add(new InMemorySymmetricSecurityKey(key));
+            }
+            return symmetricKeys;
+        }
+
+        private string id;
+        private DateTime effectiveTime;
+        private List<SecurityKey> securityKeys;
+
+        #endregion
+    }
 }

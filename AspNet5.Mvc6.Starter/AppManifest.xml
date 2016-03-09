@@ -2,19 +2,17 @@
 <!--Created:cb85b80c-f585-40ff-8bfc-12ff4d0e34a9-->
 <App xmlns="http://schemas.microsoft.com/sharepoint/2012/app/manifest"
      Name="AspNet5Mvc6Starter"
-     ProductID="{23ff7bd6-253a-4842-8492-e1154f103114}"
-     Version="1.0.0.0"
+     ProductID="{4637ef66-f6e7-4e3e-bddb-7537f9f9a160}"
+     Version="1.0.0.2"
      SharePointMinVersion="16.0.0.0"
 >
   <Properties>
-    <Title>AspNet5.Mvc6.Starter</Title>
+    <Title>PnPAuth</Title>
     <StartPage>~remoteAppUrl/?{StandardTokens}</StartPage>
   </Properties>
 
   <AppPrincipal>
     <RemoteWebApplication ClientId="*" />
   </AppPrincipal>
-  <AppPermissionRequests>
-    <AppPermissionRequest Scope="http://sharepoint/content/sitecollection/web" Right="FullControl" />
-  </AppPermissionRequests>
+  <AppPermissionRequests><AppPermissionRequest Scope="http://sharepoint/content/sitecollection/web" Right="FullControl" /></AppPermissionRequests>
 </App>

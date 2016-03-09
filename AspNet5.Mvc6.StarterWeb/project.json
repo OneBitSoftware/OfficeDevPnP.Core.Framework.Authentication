@@ -23,13 +23,15 @@
     "Microsoft.IdentityModel.Protocols": "2.0.0-rc1-211161024",
     "OfficeDevPnP.Core.Framework.Authentication": "1.0.0-*"
   },
-
   "commands": {
     "web": "Microsoft.AspNet.Server.Kestrel"
   },
 
   "frameworks": {
-    "dnx451": { }
+    "dnx451": {
+      "dependencies": {
+      }
+    }
   },
 
   "exclude": [
