@@ -11,7 +11,8 @@ using System.Security.Cryptography.X509Certificates;
 using System.Security.Principal;
 using System.ServiceModel;
 using System.Text;
-using System.Web;
+//using System.Web;
+using Microsoft.AspNet.Http;
 using System.Web.Configuration;
 using Microsoft.IdentityModel;
 using Microsoft.IdentityModel.S2S.Protocols.OAuth2;
@@ -50,10 +51,10 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// </summary>
         /// <param name="request">HttpRequest in which to look for a context token</param>
         /// <returns>The context token string</returns>
-        public static string GetContextTokenFromRequest(HttpRequest request)
-        {
-            return GetContextTokenFromRequest(new HttpRequestWrapper(request));
-        }
+        //public static string GetContextTokenFromRequest(HttpRequest request)
+        //{
+        //    return GetContextTokenFromRequest(new HttpRequestWrapper(request));
+        //}
 
         /// <summary>
         /// Retrieves the context token string from the specified request by looking for well-known parameter names in the 
@@ -61,7 +62,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// </summary>
         /// <param name="request">HttpRequest in which to look for a context token</param>
         /// <returns>The context token string</returns>
-        public static string GetContextTokenFromRequest(HttpRequestBase request)
+        public static string GetContextTokenFromRequest(HttpRequest request)
         {
             string[] paramNames = { "AppContext", "AppContextToken", "AccessToken", "SPAppToken" };
             foreach (string paramName in paramNames)
@@ -70,9 +71,9 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 {
                     return request.Form[paramName];
                 }
-                if (!string.IsNullOrEmpty(request.QueryString[paramName]))
+                if (!string.IsNullOrEmpty(request.Query[paramName])) //TODO:check
                 {
-                    return request.QueryString[paramName];
+                    return request.Query[paramName];
                 }
             }
             return null;

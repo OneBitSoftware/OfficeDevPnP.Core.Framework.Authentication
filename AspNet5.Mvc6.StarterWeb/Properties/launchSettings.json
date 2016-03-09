@@ -3,7 +3,7 @@
     "windowsAuthentication": false,
     "anonymousAuthentication": true,
     "iisExpress": {
-      "applicationUrl": "http://localhost:47551/",
+      "applicationUrl": "https://localhost:47551/",
       "sslPort": 0
     }
   },
@@ -17,6 +17,8 @@
     },
     "web": {
       "commandName": "web",
+      "launchBrowser": true,
+      "launchUrl": "https://localhost:443",
       "environmentVariables": {
         "Hosting:Environment": "Development"
       }

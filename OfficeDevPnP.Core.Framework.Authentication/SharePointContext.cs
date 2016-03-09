@@ -1,10 +1,16 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Security.Principal;
 using System.Web;
 using Microsoft.IdentityModel.S2S.Protocols.OAuth2;
+using Microsoft.IdentityModel.S2S.Tokens;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.SharePoint.Client;
+using HttpContext = Microsoft.AspNet.Http.HttpContext;
+using HttpRequest = Microsoft.AspNet.Http.HttpRequest;
+
 
 namespace OfficeDevPnP.Core.Framework.Authentication
 {
@@ -38,14 +44,14 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// </summary>
         /// <param name="httpRequest">The specified HTTP request.</param>
         /// <returns>The SharePoint host url. Returns <c>null</c> if the HTTP request doesn't contain the SharePoint host url.</returns>
-        public static Uri GetSPHostUrl(HttpRequestBase httpRequest)
+        public static Uri GetSPHostUrl(HttpRequest httpRequest)
         {
             if (httpRequest == null)
             {
                 throw new ArgumentNullException("httpRequest");
             }
 
-            string spHostUrlString = TokenHelper.EnsureTrailingSlash(httpRequest.QueryString[SPHostUrlKey]);
+            string spHostUrlString = TokenHelper.EnsureTrailingSlash(httpRequest.Query[SPHostUrlKey]);
             Uri spHostUrl;
             if (Uri.TryCreate(spHostUrlString, UriKind.Absolute, out spHostUrl) &&
                 (spHostUrl.Scheme == Uri.UriSchemeHttp || spHostUrl.Scheme == Uri.UriSchemeHttps))
@@ -61,10 +67,10 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// </summary>
         /// <param name="httpRequest">The specified HTTP request.</param>
         /// <returns>The SharePoint host url. Returns <c>null</c> if the HTTP request doesn't contain the SharePoint host url.</returns>
-        public static Uri GetSPHostUrl(HttpRequest httpRequest)
-        {
-            return GetSPHostUrl(new HttpRequestWrapper(httpRequest));
-        }
+        //public static Uri GetSPHostUrl(HttpRequest httpRequest)
+        //{
+        //    return GetSPHostUrl(new HttpRequestWrapper(httpRequest));
+        //}
 
         /// <summary>
         /// The SharePoint host url.
@@ -287,7 +293,8 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             }
             else
             {
-                current = new SharePointHighTrustContextProvider();
+                throw new NotImplementedException();
+                //current = new SharePointHighTrustContextProvider(); //TODO: fix
             }
         }
 
@@ -312,7 +319,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="httpContext">The HTTP context.</param>
         /// <param name="redirectUrl">The redirect url to SharePoint if the status is ShouldRedirect. <c>Null</c> if the status is Ok or CanNotRedirect.</param>
         /// <returns>Redirection status.</returns>
-        public static RedirectionStatus CheckRedirectionStatus(HttpContextBase httpContext, out Uri redirectUrl)
+        public static RedirectionStatus CheckRedirectionStatus(HttpContext httpContext, out Uri redirectUrl)
         {
             if (httpContext == null)
             {
@@ -336,7 +343,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
             const string SPHasRedirectedToSharePointKey = "SPHasRedirectedToSharePoint";
 
-            if (!string.IsNullOrEmpty(httpContext.Request.QueryString[SPHasRedirectedToSharePointKey]) && !contextTokenExpired)
+            if (!string.IsNullOrEmpty(httpContext.Request.Query[SPHasRedirectedToSharePointKey]) && !contextTokenExpired)
             {
                 return RedirectionStatus.CanNotRedirect;
             }
@@ -348,12 +355,12 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 return RedirectionStatus.CanNotRedirect;
             }
 
-            if (StringComparer.OrdinalIgnoreCase.Equals(httpContext.Request.HttpMethod, "POST"))
+            if (StringComparer.OrdinalIgnoreCase.Equals(httpContext.Request.Method, "POST")) //TODO:check
             {
                 return RedirectionStatus.CanNotRedirect;
             }
 
-            Uri requestUrl = httpContext.Request.Url;
+            Uri requestUrl = new Uri(httpContext.Request.Path); //TODO: check
 
             var queryNameValueCollection = HttpUtility.ParseQueryString(requestUrl.Query);
 
@@ -389,17 +396,17 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="httpContext">The HTTP context.</param>
         /// <param name="redirectUrl">The redirect url to SharePoint if the status is ShouldRedirect. <c>Null</c> if the status is Ok or CanNotRedirect.</param>
         /// <returns>Redirection status.</returns>
-        public static RedirectionStatus CheckRedirectionStatus(HttpContext httpContext, out Uri redirectUrl)
-        {
-            return CheckRedirectionStatus(new HttpContextWrapper(httpContext), out redirectUrl);
-        }
+        //public static RedirectionStatus CheckRedirectionStatus(HttpContext httpContext, out Uri redirectUrl)
+        //{
+        //    return CheckRedirectionStatus(new HttpContextWrapper(httpContext), out redirectUrl);
+        //}
 
         /// <summary>
         /// Creates a SharePointContext instance with the specified HTTP request.
         /// </summary>
         /// <param name="httpRequest">The HTTP request.</param>
         /// <returns>The SharePointContext instance. Returns <c>null</c> if errors occur.</returns>
-        public SharePointContext CreateSharePointContext(HttpRequestBase httpRequest)
+        public SharePointContext CreateSharePointContext(HttpRequest httpRequest)
         {
             if (httpRequest == null)
             {
@@ -414,7 +421,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             }
 
             // SPAppWebUrl
-            string spAppWebUrlString = TokenHelper.EnsureTrailingSlash(httpRequest.QueryString[SharePointContext.SPAppWebUrlKey]);
+            string spAppWebUrlString = TokenHelper.EnsureTrailingSlash(httpRequest.Query[SharePointContext.SPAppWebUrlKey]);
             Uri spAppWebUrl;
             if (!Uri.TryCreate(spAppWebUrlString, UriKind.Absolute, out spAppWebUrl) ||
                 !(spAppWebUrl.Scheme == Uri.UriSchemeHttp || spAppWebUrl.Scheme == Uri.UriSchemeHttps))
@@ -423,21 +430,21 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             }
 
             // SPLanguage
-            string spLanguage = httpRequest.QueryString[SharePointContext.SPLanguageKey];
+            string spLanguage = httpRequest.Query[SharePointContext.SPLanguageKey];
             if (string.IsNullOrEmpty(spLanguage))
             {
                 return null;
             }
 
             // SPClientTag
-            string spClientTag = httpRequest.QueryString[SharePointContext.SPClientTagKey];
+            string spClientTag = httpRequest.Query[SharePointContext.SPClientTagKey];
             if (string.IsNullOrEmpty(spClientTag))
             {
                 return null;
             }
 
             // SPProductNumber
-            string spProductNumber = httpRequest.QueryString[SharePointContext.SPProductNumberKey];
+            string spProductNumber = httpRequest.Query[SharePointContext.SPProductNumberKey];
             if (string.IsNullOrEmpty(spProductNumber))
             {
                 return null;
@@ -451,17 +458,17 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// </summary>
         /// <param name="httpRequest">The HTTP request.</param>
         /// <returns>The SharePointContext instance. Returns <c>null</c> if errors occur.</returns>
-        public SharePointContext CreateSharePointContext(HttpRequest httpRequest)
-        {
-            return CreateSharePointContext(new HttpRequestWrapper(httpRequest));
-        }
+        //public SharePointContext CreateSharePointContext(HttpRequest httpRequest)
+        //{
+        //    return CreateSharePointContext(new HttpRequestWrapper(httpRequest));
+        //}
 
         /// <summary>
         /// Gets a SharePointContext instance associated with the specified HTTP context.
         /// </summary>
         /// <param name="httpContext">The HTTP context.</param>
         /// <returns>The SharePointContext instance. Returns <c>null</c> if not found and a new instance can't be created.</returns>
-        public SharePointContext GetSharePointContext(HttpContextBase httpContext)
+        public SharePointContext GetSharePointContext(HttpContext httpContext)
         {
             if (httpContext == null)
             {
@@ -494,10 +501,10 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// </summary>
         /// <param name="httpContext">The HTTP context.</param>
         /// <returns>The SharePointContext instance. Returns <c>null</c> if not found and a new instance can't be created.</returns>
-        public SharePointContext GetSharePointContext(HttpContext httpContext)
-        {
-            return GetSharePointContext(new HttpContextWrapper(httpContext));
-        }
+        //public SharePointContext GetSharePointContext(HttpContext httpContext)
+        //{
+        //    return GetSharePointContext(new HttpContextWrapper(httpContext));
+        //}
 
         /// <summary>
         /// Creates a SharePointContext instance.
@@ -509,7 +516,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="spProductNumber">The SharePoint product number.</param>
         /// <param name="httpRequest">The HTTP request.</param>
         /// <returns>The SharePointContext instance. Returns <c>null</c> if errors occur.</returns>
-        protected abstract SharePointContext CreateSharePointContext(Uri spHostUrl, Uri spAppWebUrl, string spLanguage, string spClientTag, string spProductNumber, HttpRequestBase httpRequest);
+        protected abstract SharePointContext CreateSharePointContext(Uri spHostUrl, Uri spAppWebUrl, string spLanguage, string spClientTag, string spProductNumber, HttpRequest httpRequest);
 
         /// <summary>
         /// Validates if the given SharePointContext can be used with the specified HTTP context.
@@ -517,14 +524,14 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="spContext">The SharePointContext.</param>
         /// <param name="httpContext">The HTTP context.</param>
         /// <returns>True if the given SharePointContext can be used with the specified HTTP context.</returns>
-        protected abstract bool ValidateSharePointContext(SharePointContext spContext, HttpContextBase httpContext);
+        protected abstract bool ValidateSharePointContext(SharePointContext spContext, HttpContext httpContext);
 
         /// <summary>
         /// Loads the SharePointContext instance associated with the specified HTTP context.
         /// </summary>
         /// <param name="httpContext">The HTTP context.</param>
         /// <returns>The SharePointContext instance. Returns <c>null</c> if not found.</returns>
-        protected abstract SharePointContext LoadSharePointContext(HttpContextBase httpContext);
+        protected abstract SharePointContext LoadSharePointContext(HttpContext httpContext);
 
         /// <summary>
         /// Saves the specified SharePointContext instance associated with the specified HTTP context.
@@ -532,7 +539,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// </summary>
         /// <param name="spContext">The SharePointContext instance to be saved, or <c>null</c>.</param>
         /// <param name="httpContext">The HTTP context.</param>
-        protected abstract void SaveSharePointContext(SharePointContext spContext, HttpContextBase httpContext);
+        protected abstract void SaveSharePointContext(SharePointContext spContext, HttpContext httpContext);
     }
 
     #region ACS
@@ -686,7 +693,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         private const string SPContextKey = "SPContext";
         private const string SPCacheKeyKey = "SPCacheKey";
 
-        protected override SharePointContext CreateSharePointContext(Uri spHostUrl, Uri spAppWebUrl, string spLanguage, string spClientTag, string spProductNumber, HttpRequestBase httpRequest)
+        protected override SharePointContext CreateSharePointContext(Uri spHostUrl, Uri spAppWebUrl, string spLanguage, string spClientTag, string spProductNumber, HttpRequest httpRequest)
         {
             string contextTokenString = TokenHelper.GetContextTokenFromRequest(httpRequest);
             if (string.IsNullOrEmpty(contextTokenString))
@@ -697,7 +704,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             SharePointContextToken contextToken = null;
             try
             {
-                contextToken = TokenHelper.ReadAndValidateContextToken(contextTokenString, httpRequest.Url.Authority);
+                contextToken = TokenHelper.ReadAndValidateContextToken(contextTokenString, httpRequest.Url.Authority); //TODO:check
             }
             catch (WebException)
             {
@@ -711,7 +718,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             return new SharePointAcsContext(spHostUrl, spAppWebUrl, spLanguage, spClientTag, spProductNumber, contextTokenString, contextToken);
         }
 
-        protected override bool ValidateSharePointContext(SharePointContext spContext, HttpContextBase httpContext)
+        protected override bool ValidateSharePointContext(SharePointContext spContext, HttpContext httpContext)
         {
             SharePointAcsContext spAcsContext = spContext as SharePointAcsContext;
 
@@ -719,7 +726,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             {
                 Uri spHostUrl = SharePointContext.GetSPHostUrl(httpContext.Request);
                 string contextToken = TokenHelper.GetContextTokenFromRequest(httpContext.Request);
-                HttpCookie spCacheKeyCookie = httpContext.Request.Cookies[SPCacheKeyKey];
+                HttpCookie spCacheKeyCookie = new HttpCookie(string.Empty, httpContext.Request.Cookies[SPCacheKeyKey]); //TODO:check
                 string spCacheKey = spCacheKeyCookie != null ? spCacheKeyCookie.Value : null;
 
                 return spHostUrl == spAcsContext.SPHostUrl &&
@@ -732,12 +739,26 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             return false;
         }
 
-        protected override SharePointContext LoadSharePointContext(HttpContextBase httpContext)
+        protected override SharePointContext LoadSharePointContext(HttpContext httpContext)
         {
-            return httpContext.Session[SPContextKey] as SharePointAcsContext;
+            byte[] value;
+            try
+            {
+                httpContext.Session.TryGetValue(SPContextKey, out value);
+                var claims = new List<JsonWebTokenClaim>();
+                var cxt = new SharePointAcsContext(new Uri(""), new Uri(""), "BG", "ee", "1", "token",
+                    new SharePointContextToken("iss", "aud", DateTime.MaxValue, DateTime.MaxValue, claims));
+                return cxt; //TODO:Fix as SharePointAcsContext;
+
+            }
+            catch (Exception ex)
+            {
+                
+            }
+            return null;
         }
 
-        protected override void SaveSharePointContext(SharePointContext spContext, HttpContextBase httpContext)
+        protected override void SaveSharePointContext(SharePointContext spContext, HttpContext httpContext)
         {
             SharePointAcsContext spAcsContext = spContext as SharePointAcsContext;
 
@@ -750,10 +771,10 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                     HttpOnly = true
                 };
 
-                httpContext.Response.AppendCookie(spCacheKeyCookie);
+                //httpContext.Response.AppendCookie(spCacheKeyCookie);
             }
 
-            httpContext.Session[SPContextKey] = spAcsContext;
+            //httpContext.Session[SPContextKey] = spAcsContext;
         }
     }
 
@@ -874,50 +895,51 @@ namespace OfficeDevPnP.Core.Framework.Authentication
     /// <summary>
     /// Default provider for SharePointHighTrustContext.
     /// </summary>
-    public class SharePointHighTrustContextProvider : SharePointContextProvider
-    {
-        private const string SPContextKey = "SPContext";
+    //public class SharePointHighTrustContextProvider : SharePointContextProvider
+    //{
+    //    private const string SPContextKey = "SPContext";
 
-        protected override SharePointContext CreateSharePointContext(Uri spHostUrl, Uri spAppWebUrl, string spLanguage, string spClientTag, string spProductNumber, HttpRequestBase httpRequest)
-        {
-            WindowsIdentity logonUserIdentity = httpRequest.LogonUserIdentity;
-            if (logonUserIdentity == null || !logonUserIdentity.IsAuthenticated || logonUserIdentity.IsGuest || logonUserIdentity.User == null)
-            {
-                return null;
-            }
+    //    protected override SharePointContext CreateSharePointContext(Uri spHostUrl, Uri spAppWebUrl, string spLanguage, string spClientTag, string spProductNumber, HttpRequest httpRequest)
+    //    {
+    //        WindowsIdentity logonUserIdentity = httpRequest.LogonUserIdentity;
+    //        if (logonUserIdentity == null || !logonUserIdentity.IsAuthenticated || logonUserIdentity.IsGuest || logonUserIdentity.User == null)
+    //        {
+    //            return null;
+    //        }
 
-            return new SharePointHighTrustContext(spHostUrl, spAppWebUrl, spLanguage, spClientTag, spProductNumber, logonUserIdentity);
-        }
+    //        return new SharePointHighTrustContext(spHostUrl, spAppWebUrl, spLanguage, spClientTag, spProductNumber, logonUserIdentity);
+    //    }
 
-        protected override bool ValidateSharePointContext(SharePointContext spContext, HttpContextBase httpContext)
-        {
-            SharePointHighTrustContext spHighTrustContext = spContext as SharePointHighTrustContext;
+    //    protected override bool ValidateSharePointContext(SharePointContext spContext, HttpContext httpContext)
+    //    {
+    //        SharePointHighTrustContext spHighTrustContext = spContext as SharePointHighTrustContext;
 
-            if (spHighTrustContext != null)
-            {
-                Uri spHostUrl = SharePointContext.GetSPHostUrl(httpContext.Request);
-                WindowsIdentity logonUserIdentity = httpContext.Request.LogonUserIdentity;
+    //        if (spHighTrustContext != null)
+    //        {
+    //            Uri spHostUrl = SharePointContext.GetSPHostUrl(httpContext.Request);
+    //            WindowsIdentity logonUserIdentity = httpContext.Request.LogonUserIdentity;
 
-                return spHostUrl == spHighTrustContext.SPHostUrl &&
-                       logonUserIdentity != null &&
-                       logonUserIdentity.IsAuthenticated &&
-                       !logonUserIdentity.IsGuest &&
-                       logonUserIdentity.User == spHighTrustContext.LogonUserIdentity.User;
-            }
+    //            return spHostUrl == spHighTrustContext.SPHostUrl &&
+    //                   logonUserIdentity != null &&
+    //                   logonUserIdentity.IsAuthenticated &&
+    //                   !logonUserIdentity.IsGuest &&
+    //                   logonUserIdentity.User == spHighTrustContext.LogonUserIdentity.User;
+    //        }
 
-            return false;
-        }
+    //        return false;
+    //    }
 
-        protected override SharePointContext LoadSharePointContext(HttpContextBase httpContext)
-        {
-            return httpContext.Session[SPContextKey] as SharePointHighTrustContext;
-        }
+    //    //protected override SharePointContext LoadSharePointContext(HttpContext httpContext)
+    //    //{
+    //    //    var session = httpContext.Session as Microsoft.AspNet.Http.Features.ISession;
+    //    //    return httpContext.Session[SPContextKey] as SharePointHighTrustContext;
+    //    //}
 
-        protected override void SaveSharePointContext(SharePointContext spContext, HttpContextBase httpContext)
-        {
-            httpContext.Session[SPContextKey] = spContext as SharePointHighTrustContext;
-        }
-    }
+    //    //protected override void SaveSharePointContext(SharePointContext spContext, HttpContext httpContext)
+    //    //{
+    //    //    httpContext.Session[SPContextKey] = spContext as SharePointHighTrustContext;
+    //    //}
+    //}
 
     #endregion HighTrust
 }

@@ -2,12 +2,12 @@
 <!--Created:cb85b80c-f585-40ff-8bfc-12ff4d0e34a9-->
 <App xmlns="http://schemas.microsoft.com/sharepoint/2012/app/manifest"
      Name="AspNet5Mvc6Starter"
-     ProductID="{4637ef66-f6e7-4e3e-bddb-7537f9f9a160}"
-     Version="1.0.0.2"
+     ProductID="{72672cae-eea7-4201-8d34-38480ff70a4c}"
+     Version="1.0.0.8"
      SharePointMinVersion="16.0.0.0"
 >
   <Properties>
-    <Title>PnPAuth</Title>
+    <Title>AspNet5Mvc6Starter</Title>
     <StartPage>~remoteAppUrl/?{StandardTokens}</StartPage>
   </Properties>
 

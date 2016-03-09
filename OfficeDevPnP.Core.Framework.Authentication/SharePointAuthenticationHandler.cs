@@ -15,14 +15,15 @@ namespace OfficeDevPnP.Core.Framework.Authentication
     {
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
+            
             AuthenticateResult result = AuthenticateResult.Failed("Could not get the RedirectionStatus");
-            var abstractContext = new System.Web.HttpContextWrapper(System.Web.HttpContext.Current);
+            //var abstractContext = new System.Web.HttpContextWrapper(System.Web.HttpContext.Current);
             Uri redirectUrl;
-            switch (SharePointContextProvider.CheckRedirectionStatus(abstractContext, out redirectUrl))
+            switch (SharePointContextProvider.CheckRedirectionStatus(Context, out redirectUrl))
             {
                 case RedirectionStatus.Ok:
                     var principal = new ClaimsPrincipal();
-                    var spContext = SharePointContextProvider.Current.GetSharePointContext(abstractContext);
+                    var spContext = SharePointContextProvider.Current.GetSharePointContext(Context);
                     using (var clientContext = spContext.CreateUserClientContextForSPHost())
                     {
                         if (clientContext != null)

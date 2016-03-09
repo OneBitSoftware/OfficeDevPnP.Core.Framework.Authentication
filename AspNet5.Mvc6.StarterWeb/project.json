@@ -21,10 +21,11 @@
     "Microsoft.SharePointOnline.CSOM": "16.1.4727.1200",
     "System.IdentityModel.Tokens": "5.0.0-rc1-211161024",
     "Microsoft.IdentityModel.Protocols": "2.0.0-rc1-211161024",
-    "OfficeDevPnP.Core.Framework.Authentication": "1.0.0-*"
+    "OfficeDevPnP.Core.Framework.Authentication": "1.0.0-*",
+    "Microsoft.AspNet.Server.Kestrel.Https": "1.0.0-rc1-final"
   },
   "commands": {
-    "web": "Microsoft.AspNet.Server.Kestrel"
+    "web": "Microsoft.AspNet.Hosting --server Microsoft.AspNet.Server.Kestrel --server.urls https://localhost:5000"
   },
 
   "frameworks": {
