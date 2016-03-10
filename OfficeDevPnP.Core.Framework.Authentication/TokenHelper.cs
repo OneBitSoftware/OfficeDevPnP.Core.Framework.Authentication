@@ -425,7 +425,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         {
             ClientContext clientContext = new ClientContext(targetUrl);
 
-            clientContext.AuthenticationMode = ClientAuthenticationMode.Anonymous;
+            clientContext.AuthenticationMode = ClientAuthenticationMode.Default;
             clientContext.FormDigestHandlingEnabled = false;
             clientContext.ExecutingWebRequest +=
                 delegate (object oSender, WebRequestEventArgs webRequestEventArgs)
@@ -661,11 +661,11 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         //
         // Hosted app configuration
         //
-        private static readonly string ClientId = string.IsNullOrEmpty(WebConfigurationManager.AppSettings.Get("ClientId")) ? WebConfigurationManager.AppSettings.Get("HostedAppName") : WebConfigurationManager.AppSettings.Get("ClientId");
+        private static readonly string ClientId = "712afcfc-ee2e-4404-b61f-8732f158d695"; //TODO:fix hardcoded //string.IsNullOrEmpty(WebConfigurationManager.AppSettings.Get("ClientId")) ? WebConfigurationManager.AppSettings.Get("HostedAppName") : WebConfigurationManager.AppSettings.Get("ClientId");
         private static readonly string IssuerId = string.IsNullOrEmpty(WebConfigurationManager.AppSettings.Get("IssuerId")) ? ClientId : WebConfigurationManager.AppSettings.Get("IssuerId");
         private static readonly string HostedAppHostNameOverride = WebConfigurationManager.AppSettings.Get("HostedAppHostNameOverride");
         private static readonly string HostedAppHostName = WebConfigurationManager.AppSettings.Get("HostedAppHostName");
-        private static readonly string ClientSecret = string.IsNullOrEmpty(WebConfigurationManager.AppSettings.Get("ClientSecret")) ? WebConfigurationManager.AppSettings.Get("HostedAppSigningKey") : WebConfigurationManager.AppSettings.Get("ClientSecret");
+        private static readonly string ClientSecret = "1+Ucvqkh7rgshiq/SoY+S7tPxTWWiSKYCp1Einvcs2c="; //TODO:fix //string.IsNullOrEmpty(WebConfigurationManager.AppSettings.Get("ClientSecret")) ? WebConfigurationManager.AppSettings.Get("HostedAppSigningKey") : WebConfigurationManager.AppSettings.Get("ClientSecret");
         private static readonly string SecondaryClientSecret = WebConfigurationManager.AppSettings.Get("SecondaryClientSecret");
         private static readonly string Realm = WebConfigurationManager.AppSettings.Get("Realm");
         private static readonly string ServiceNamespace = WebConfigurationManager.AppSettings.Get("Realm");

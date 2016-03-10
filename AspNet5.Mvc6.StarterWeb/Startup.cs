@@ -10,7 +10,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNet.Server.Kestrel.Https;
-using Microsoft.AspNet.Server.Kestrel.Filter;
+using Microsoft.AspNet.Session;
+using Microsoft.AspNet.Http;
+using Microsoft.Extensions.Caching.Memory;
 
 using OfficeDevPnP.Core.Framework.Authentication;
 
@@ -34,7 +36,13 @@ namespace AspNet5.Mvc6.StarterWeb
         {
 
             services.AddAuthentication();
-            
+            services.AddCaching();
+
+            services.AddSession(o =>
+            {
+                o.IdleTimeout = TimeSpan.FromSeconds(10);
+            });
+
             // Add framework services.
             services.AddMvc();
         }
@@ -57,15 +65,20 @@ namespace AspNet5.Mvc6.StarterWeb
             }
 
             var testCertPath = Path.Combine(env.WebRootPath, @"../../cert/office365flask.pfx");
+            if (string.IsNullOrEmpty(testCertPath))
+            {
+                throw new ArgumentException("Missing X509Certificate2. Cannot start on SSL.");
+            }
             app.UseKestrelHttps(new X509Certificate2(testCertPath, "pass@word1"));
-            app.UseIISPlatformHandler();
+            //app.UseIISPlatformHandler();
+            app.UseSession();
             app.UseStaticFiles();
 
             //Add SharePoint authentication capabilities
             app.UseSharePointAuthentication(new SharePointAuthenticationOptions()
-                {
-                    RequireHttpsMetadata = true
-                }
+            {
+                RequireHttpsMetadata = true
+            }
             );
 
             app.UseMvc(routes =>

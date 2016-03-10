@@ -3,7 +3,7 @@
 <App xmlns="http://schemas.microsoft.com/sharepoint/2012/app/manifest"
      Name="AspNet5Mvc6Starter"
      ProductID="{72672cae-eea7-4201-8d34-38480ff70a4c}"
-     Version="1.0.0.8"
+     Version="1.0.0.10"
      SharePointMinVersion="16.0.0.0"
 >
   <Properties>
@@ -14,5 +14,7 @@
   <AppPrincipal>
     <RemoteWebApplication ClientId="*" />
   </AppPrincipal>
-  <AppPermissionRequests><AppPermissionRequest Scope="http://sharepoint/content/sitecollection/web" Right="FullControl" /></AppPermissionRequests>
+  <AppPermissionRequests><AppPermissionRequest Scope="http://sharepoint/content/sitecollection/web" Right="FullControl" />
+    <AppPermissionRequest Scope="http://sharepoint/social/tenant" Right="FullControl" />
+  </AppPermissionRequests>
 </App>

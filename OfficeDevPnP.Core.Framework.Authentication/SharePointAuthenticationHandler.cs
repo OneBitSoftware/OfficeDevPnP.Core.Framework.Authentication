@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Web;
 using Microsoft.AspNet.Http.Authentication;
 using Microsoft.AspNet.Http.Features.Authentication;
+using Microsoft.SharePoint.Client;
 
 namespace OfficeDevPnP.Core.Framework.Authentication
 {
@@ -28,14 +29,17 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                     {
                         if (clientContext != null)
                         {
-                            GenericIdentity identity = new GenericIdentity(clientContext.Web.CurrentUser.LoginName);
-                            //clientContext.Load(spUser, user => user.Title);
-                            //clientContext.ExecuteQuery();
-                            //ViewBag.UserName = spUser.Title;
-                            principal.AddIdentity(identity);
-                            result =
-                                AuthenticateResult.Success(new AuthenticationTicket(principal,
-                                    new AuthenticationProperties(), "sharepoint"));
+                            User spUser = null;
+                            Web web = clientContext.Web;
+                            //spUser = clientContext.Web.CurrentUser;
+                            clientContext.Load(web, w => w.Title, w => w.Description);
+                            clientContext.ExecuteQuery();
+                            var t = web;
+                            //GenericIdentity identity = new GenericIdentity(spUser.LoginName);
+                            //principal.AddIdentity(identity);
+                            //result =
+                            //    AuthenticateResult.Success(new AuthenticationTicket(principal,
+                            //        new AuthenticationProperties(), "sharepoint"));
                         }
                     }
                     break;

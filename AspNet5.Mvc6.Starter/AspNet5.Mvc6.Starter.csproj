@@ -22,7 +22,7 @@
     <WorkflowPartId>{d119c478-4415-4a9a-9073-892d94e7b586}</WorkflowPartId>
     <CspkgPartId>{fb620801-cbb4-46ca-8dbd-482f3a9ad295}</CspkgPartId>
     <SqlPackagePartId>{136edf76-531a-4660-9ee5-685e46398df4}</SqlPackagePartId>
-    <ActivePublishProfile>PnPAuth</ActivePublishProfile>
+    <ActivePublishProfile>PnPDev</ActivePublishProfile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

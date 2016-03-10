@@ -2,12 +2,16 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Security.Principal;
 using System.Web;
+using Microsoft.AspNet.Http;
 using Microsoft.IdentityModel.S2S.Protocols.OAuth2;
 using Microsoft.IdentityModel.S2S.Tokens;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.SharePoint.Client;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 using HttpContext = Microsoft.AspNet.Http.HttpContext;
 using HttpRequest = Microsoft.AspNet.Http.HttpRequest;
 
@@ -355,7 +359,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 return RedirectionStatus.CanNotRedirect;
             }
 
-            if (StringComparer.OrdinalIgnoreCase.Equals(httpContext.Request.Method, "POST")) //TODO:check
+            if (StringComparer.OrdinalIgnoreCase.Equals(httpContext.Request.Method, "POST"))
             {
                 return RedirectionStatus.CanNotRedirect;
             }
@@ -704,7 +708,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             SharePointContextToken contextToken = null;
             try
             {
-                contextToken = TokenHelper.ReadAndValidateContextToken(contextTokenString, httpRequest.Url.Authority); //TODO:check
+                contextToken = TokenHelper.ReadAndValidateContextToken(contextTokenString, httpRequest.Host.Value);
             }
             catch (WebException)
             {
@@ -742,20 +746,18 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         protected override SharePointContext LoadSharePointContext(HttpContext httpContext)
         {
             byte[] value;
-            try
+            httpContext.Session.TryGetValue(SPContextKey, out value);
+            if (value == null)
             {
-                httpContext.Session.TryGetValue(SPContextKey, out value);
-                var claims = new List<JsonWebTokenClaim>();
-                var cxt = new SharePointAcsContext(new Uri(""), new Uri(""), "BG", "ee", "1", "token",
-                    new SharePointContextToken("iss", "aud", DateTime.MaxValue, DateTime.MaxValue, claims));
-                return cxt; //TODO:Fix as SharePointAcsContext;
+                return null;
+            }
 
-            }
-            catch (Exception ex)
-            {
-                
-            }
-            return null;
+            char[] chars = new char[value.Length / sizeof(char)];
+            System.Buffer.BlockCopy(value, 0, chars, 0, value.Length);
+            string acsSessionContext = new string(chars);
+            var dto = JsonConvert.DeserializeObject<SharePointAcsContextDto>(acsSessionContext);
+            var contextTokenObj = TokenHelper.ReadAndValidateContextToken(dto.ContextToken, httpContext.Request.Host.Value);
+            return new SharePointAcsContext(dto.SpHostUrl,dto.SpAppWebUrl,dto.SpLanguage,dto.SpClientTag,dto.SpProductNumber,dto.ContextToken, contextTokenObj);
         }
 
         protected override void SaveSharePointContext(SharePointContext spContext, HttpContext httpContext)
@@ -764,18 +766,24 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
             if (spAcsContext != null)
             {
-                HttpCookie spCacheKeyCookie = new HttpCookie(SPCacheKeyKey)
-                {
-                    Value = spAcsContext.CacheKey,
-                    Secure = true,
-                    HttpOnly = true
-                };
-
-                //httpContext.Response.AppendCookie(spCacheKeyCookie);
+                var options = new CookieOptions() { HttpOnly = true, Secure = true };
+                httpContext.Response.Cookies.Append(SPCacheKeyKey, spAcsContext.CacheKey, options);
             }
-
-            //httpContext.Session[SPContextKey] = spAcsContext;
+            string output = JsonConvert.SerializeObject(spAcsContext);
+            byte[] bytes = new byte[output.Length * sizeof(char)];
+            System.Buffer.BlockCopy(output.ToCharArray(), 0, bytes, 0, bytes.Length);
+            httpContext.Session.Set(SPContextKey, bytes);
         }
+    }
+
+    public class SharePointAcsContextDto
+    {
+        public Uri SpHostUrl { get; set; }
+        public Uri SpAppWebUrl { get; set; }
+        public string SpLanguage { get; set; }
+        public string SpClientTag { get; set; }
+        public string SpProductNumber { get; set; }
+        public string ContextToken { get; set; }
     }
 
     #endregion ACS
