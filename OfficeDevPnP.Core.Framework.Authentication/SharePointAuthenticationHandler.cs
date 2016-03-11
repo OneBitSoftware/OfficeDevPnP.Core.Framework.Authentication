@@ -68,7 +68,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
         protected override Task<bool> HandleUnauthorizedAsync(ChallengeContext context)
         {
-            throw new NotImplementedException();
+            //throw new NotImplementedException();
             return base.HandleUnauthorizedAsync(context);
         }
 
