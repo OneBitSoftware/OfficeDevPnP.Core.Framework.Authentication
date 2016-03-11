@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Http.Authentication;
 using Microsoft.AspNet.Mvc;
@@ -29,6 +30,8 @@ namespace AspNet5.Mvc6.StarterWeb.Controllers
             //        ViewBag.UserName = spUser.Title;
             //    }
             //}
+
+            ViewBag.UserName = HttpContext.User.GetUserName();
             return View();
         }
 

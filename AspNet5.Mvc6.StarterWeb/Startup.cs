@@ -13,7 +13,6 @@ using Microsoft.AspNet.Server.Kestrel.Https;
 using Microsoft.AspNet.Session;
 using Microsoft.AspNet.Http;
 using Microsoft.Extensions.Caching.Memory;
-
 using OfficeDevPnP.Core.Framework.Authentication;
 
 namespace AspNet5.Mvc6.StarterWeb
@@ -52,7 +51,6 @@ namespace AspNet5.Mvc6.StarterWeb
         {
             loggerFactory.AddConsole(Configuration.GetSection("Logging"));
             loggerFactory.AddDebug();
-            
 
             if (env.IsDevelopment())
             {
@@ -70,16 +68,18 @@ namespace AspNet5.Mvc6.StarterWeb
                 throw new ArgumentException("Missing X509Certificate2. Cannot start on SSL.");
             }
             app.UseKestrelHttps(new X509Certificate2(testCertPath, "pass@word1"));
+
             //app.UseIISPlatformHandler();
-            app.UseSession();
+
+            app.UseSession(); //TODO: should we move this as SharePointAuthenticationOption
             app.UseStaticFiles();
 
             //Add SharePoint authentication capabilities
             app.UseSharePointAuthentication(new SharePointAuthenticationOptions()
-            {
-                RequireHttpsMetadata = true
-            }
-            );
+                    {
+                        RequireHttpsMetadata = true
+                    }
+                );
 
             app.UseMvc(routes =>
             {

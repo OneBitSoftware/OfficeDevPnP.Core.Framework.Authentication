@@ -13,6 +13,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             //Set automatic challenge to default
             AutomaticAuthenticate = true;
             AutomaticChallenge = true;
+            AuthenticationScheme = "sharepoint";
         }
 
         /// <summary>

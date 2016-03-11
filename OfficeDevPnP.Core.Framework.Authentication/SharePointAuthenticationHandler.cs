@@ -14,12 +14,12 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 {
     public class SharePointAuthenticationHandler : AuthenticationHandler<SharePointAuthenticationOptions>
     {
-        protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+        protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
-            
-            AuthenticateResult result = AuthenticateResult.Failed("Could not get the RedirectionStatus");
-            //var abstractContext = new System.Web.HttpContextWrapper(System.Web.HttpContext.Current);
             Uri redirectUrl;
+            var defaultSheme = "sharepoint";
+            AuthenticateResult result = AuthenticateResult.Failed("Could not get the RedirectionStatus");
+            
             switch (SharePointContextProvider.CheckRedirectionStatus(Context, out redirectUrl))
             {
                 case RedirectionStatus.Ok:
@@ -30,34 +30,40 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                         if (clientContext != null)
                         {
                             User spUser = null;
-                            Web web = clientContext.Web;
-                            //spUser = clientContext.Web.CurrentUser;
-                            clientContext.Load(web, w => w.Title, w => w.Description);
+                            spUser = clientContext.Web.CurrentUser;
+                            clientContext.Load(spUser, user => user.Title);
                             clientContext.ExecuteQuery();
-                            var t = web;
-                            //GenericIdentity identity = new GenericIdentity(spUser.LoginName);
-                            //principal.AddIdentity(identity);
-                            //result =
-                            //    AuthenticateResult.Success(new AuthenticationTicket(principal,
-                            //        new AuthenticationProperties(), "sharepoint"));
+
+                            GenericIdentity identity = new GenericIdentity(spUser.Title);
+                            principal.AddIdentity(identity);
+
+                            var ticket = new AuthenticationTicket(principal, new AuthenticationProperties(), defaultSheme);
+                            
+                            //handle the sign in method of the auth middleware
+                            await Context.Authentication.SignInAsync(defaultSheme, principal);
+
+                            result = AuthenticateResult.Success(ticket);
                         }
                     }
                     break;
                 case RedirectionStatus.ShouldRedirect:
-                    //filterContext.Result = new RedirectResult(redirectUrl.AbsoluteUri);
+                    //filterContext.Result = new RedirectResult(redirectUrl.AbsoluteUri); //TODO: should I investigate
                     result = AuthenticateResult.Failed("ShouldRedirect");
                     break;
                 case RedirectionStatus.CanNotRedirect:
                     result = AuthenticateResult.Failed("CanNotRedirect");
                     break;
             }
-            return new Task<AuthenticateResult>(() => result);
+            return result;
         }
 
-        protected override Task HandleSignInAsync(SignInContext context)
+        protected override async Task HandleSignInAsync(SignInContext context)
         {
-            throw new NotImplementedException();
-            return base.HandleSignInAsync(context);
+            await base.HandleSignInAsync(context);
+            SignInAccepted = true;
+
+            //throw new NotImplementedException();
+            //return base.HandleSignInAsync(context);
         }
 
         protected override Task<bool> HandleUnauthorizedAsync(ChallengeContext context)
