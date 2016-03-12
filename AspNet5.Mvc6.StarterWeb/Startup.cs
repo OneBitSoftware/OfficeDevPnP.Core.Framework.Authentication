@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
+using Microsoft.AspNet.Authentication;
 using Microsoft.AspNet.Builder;
 using Microsoft.AspNet.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -12,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNet.Server.Kestrel.Https;
 using Microsoft.AspNet.Session;
 using Microsoft.AspNet.Http;
+using Microsoft.AspNet.StaticFiles;
 using Microsoft.Extensions.Caching.Memory;
 using OfficeDevPnP.Core.Framework.Authentication;
 
@@ -33,14 +35,13 @@ namespace AspNet5.Mvc6.StarterWeb
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-
-            services.AddAuthentication();
+            //services.AddAuthentication();
             services.AddCaching();
-
             services.AddSession(o =>
             {
                 o.IdleTimeout = TimeSpan.FromSeconds(10);
             });
+            services.AddSharePointAuthentication(Configuration.GetSection("SharePointAuthentication"));
 
             // Add framework services.
             services.AddMvc();
@@ -71,8 +72,8 @@ namespace AspNet5.Mvc6.StarterWeb
 
             //app.UseIISPlatformHandler();
 
-            app.UseSession(); //TODO: should we move this as SharePointAuthenticationOption
-            app.UseStaticFiles();
+            //app.UseSession(); //TODO: should we move this as SharePointAuthenticationOption //inject to configuration
+            app.UseStaticFiles(new StaticFileOptions() {DefaultContentType = "ss"});
 
             //Add SharePoint authentication capabilities
             app.UseSharePointAuthentication(new SharePointAuthenticationOptions()

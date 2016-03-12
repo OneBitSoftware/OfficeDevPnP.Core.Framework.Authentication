@@ -13,7 +13,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             //Set automatic challenge to default
             AutomaticAuthenticate = true;
             AutomaticChallenge = true;
-            AuthenticationScheme = "sharepoint";
+            AuthenticationScheme = SharePointAuthenticationDefaults.AuthenticationScheme;
         }
 
         /// <summary>
@@ -21,7 +21,5 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// The default is true. This should be disabled only in development environments.
         /// </summary>
         public bool RequireHttpsMetadata { get; set; } = true;
-
-
     }
 }

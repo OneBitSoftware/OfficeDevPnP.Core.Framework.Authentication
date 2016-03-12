@@ -71,7 +71,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 {
                     return request.Form[paramName];
                 }
-                if (!string.IsNullOrEmpty(request.Query[paramName])) //TODO:check
+                if (!string.IsNullOrEmpty(request.Query[paramName]))
                 {
                     return request.Query[paramName];
                 }

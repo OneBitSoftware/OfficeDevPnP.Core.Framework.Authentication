@@ -14,10 +14,11 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 {
     public class SharePointAuthenticationHandler : AuthenticationHandler<SharePointAuthenticationOptions>
     {
+        //private IConficuration
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
             Uri redirectUrl;
-            var defaultSheme = "sharepoint";
+            var defaultSheme = SharePointAuthenticationDefaults.AuthenticationScheme;
             AuthenticateResult result = AuthenticateResult.Failed("Could not get the RedirectionStatus");
             
             switch (SharePointContextProvider.CheckRedirectionStatus(Context, out redirectUrl))
