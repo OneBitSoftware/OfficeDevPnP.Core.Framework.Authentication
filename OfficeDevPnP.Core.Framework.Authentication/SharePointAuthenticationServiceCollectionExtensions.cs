@@ -18,6 +18,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication  //TODO; should we use Micr
         /// Adds authentication services to the specified <see cref="T:Microsoft.Extensions.DependencyInjection.IServiceCollection" />. 
         /// </summary>
         /// <param name="services">The <see cref="T:Microsoft.Extensions.DependencyInjection.IServiceCollection" /> to add services to.</param>
+        /// /// <param name="configuration">The <see cref="T:Microsoft.Extensions.Configuration.IConfiguration" /> to add services to.</param>
         /// <returns>A reference to this instance after the operation has completed.</returns>
         public static IServiceCollection AddSharePointAuthentication(this IServiceCollection services, IConfiguration configuration)
         {
@@ -27,6 +28,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication  //TODO; should we use Micr
             }
             //services.AddTransient<ISession>();
             //services.AddTransient<IConfigurationSection>();
+            //OptionsServiceCollectionExtensions.Configure<IConfiguration>(services, configuration);
             return services;
         }
 
@@ -36,7 +38,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication  //TODO; should we use Micr
         /// <param name="services">The <see cref="T:Microsoft.Extensions.DependencyInjection.IServiceCollection" /> to add services to.</param>
         /// <param name="configureOptions">An action delegate to configure the provided <see cref="T:Microsoft.AspNet.Authentication.SharedAuthenticationOptions" />.</param>
         /// <returns>A reference to this instance after the operation has completed.</returns>
-        public static IServiceCollection AddSharePointAuthentication(this IServiceCollection services, IConfiguration configuration, Action<SharedAuthenticationOptions> configureOptions)
+        public static IServiceCollection AddSharePointAuthentication(this IServiceCollection services, IConfiguration configuration, Action<SharePointAuthenticationOptions> configureOptions)
         {
             if (services == null)
             {
@@ -46,7 +48,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication  //TODO; should we use Micr
             {
                 throw new ArgumentNullException("configureOptions");
             }
-            OptionsServiceCollectionExtensions.Configure<SharedAuthenticationOptions>(services, configureOptions);
+            OptionsServiceCollectionExtensions.Configure<SharePointAuthenticationOptions>(services, configureOptions);
             return services.AddSharePointAuthentication(configuration);
         }
     }

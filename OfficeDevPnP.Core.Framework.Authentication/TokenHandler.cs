@@ -13,7 +13,6 @@ using System.ServiceModel;
 using System.Text;
 //using System.Web;
 using Microsoft.AspNet.Http;
-using System.Web.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel;
 using Microsoft.IdentityModel.S2S.Protocols.OAuth2;
@@ -248,7 +247,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             try
             {
                 oauth2Response =
-                    client.Issue(AcsMetadataParser.GetStsUrl(targetRealm), oauth2Request) as OAuth2AccessTokenResponse;
+                    client.Issue(AcsMetadataParser.GetStsUrl(GetAcsMetadataEndpointUrlWithRealm(targetRealm)), oauth2Request) as OAuth2AccessTokenResponse;
             }
             catch (WebException wex)
             {
@@ -295,7 +294,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             try
             {
                 oauth2Response =
-                    client.Issue(AcsMetadataParser.GetStsUrl(targetRealm), oauth2Request) as OAuth2AccessTokenResponse;
+                    client.Issue(AcsMetadataParser.GetStsUrl(GetAcsMetadataEndpointUrlWithRealm(targetRealm)), oauth2Request) as OAuth2AccessTokenResponse;
             }
             catch (WebException wex)
             {
@@ -411,7 +410,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="targetUrl">Url of the target SharePoint site</param>
         /// <param name="accessToken">Access token to be used when calling the specified targetUrl</param>
         /// <returns>A ClientContext ready to call targetUrl with the specified access token</returns>
-        public ClientContext GetClientContextWithAccessToken(string targetUrl, string accessToken)
+        public static ClientContext GetClientContextWithAccessToken(string targetUrl, string accessToken)
         {
             ClientContext clientContext = new ClientContext(targetUrl);
 
@@ -653,21 +652,21 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
         #region constructors
 
-        private TokenHandler(IConfiguration configuration)
+        public TokenHandler(IConfiguration configuration)
         {
-            var configSection = configuration.GetSection(ConfigurationSectionName);
+            var configSection = configuration; //.GetSection(ConfigurationSectionName);
 
-            _clientId = configSection.Get("ClientId");
-            _issuerId = string.IsNullOrEmpty(configSection.Get("IssuerId")) ? _clientId : configSection.Get("IssuerId");
-            _hostedAppHostNameOverride = configSection.Get("HostedAppHostNameOverride");
-            _hostedAppHostName = configSection.Get("HostedAppHostName");
-            _clientSecret = configSection.Get("ClientSecret");
-            _secondaryClientSecret = configSection.Get("SecondaryClientSecret");
-            _realm = configSection.Get("Realm");
-            _serviceNamespace = configSection.Get("Realm");
+            _clientId = configSection["ClientId"];
+            _issuerId = string.IsNullOrEmpty(configSection["IssuerId"]) ? _clientId : configSection["IssuerId"];
+            _hostedAppHostNameOverride = configSection["HostedAppHostNameOverride"];
+            _hostedAppHostName = configSection["HostedAppHostName"];
+            _clientSecret = configSection["ClientSecret"];
+            _secondaryClientSecret = configSection["SecondaryClientSecret"];
+            _realm = configSection["Realm"];
+            _serviceNamespace = configSection["Realm"];
 
-            var clientSigningCertificatePath = configSection.Get("ClientSigningCertificatePath");
-            var clientSigningCertificatePassword = configSection.Get("ClientSigningCertificatePassword");
+            var clientSigningCertificatePath = configSection["ClientSigningCertificatePath"];
+            var clientSigningCertificatePassword = configSection["ClientSigningCertificatePassword"];
             var clientCertificate = (string.IsNullOrEmpty(clientSigningCertificatePath) || string.IsNullOrEmpty(clientSigningCertificatePassword)) ? null : new X509Certificate2(clientSigningCertificatePath, clientSigningCertificatePassword);
 
             _signingCredentials = (clientCertificate == null)
@@ -857,35 +856,37 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         // methods to parse the MetaData document and get endpoints and STS certificate.
         public class AcsMetadataParser
         {
-            public static X509Certificate2 GetAcsSigningCert(string acsMetadataEndpointUrlWithRealm)
-            {
-                JsonMetadataDocument document = GetMetadataDocument(acsMetadataEndpointUrlWithRealm);
+            //TODO: Uncomment for high trust
+            //public static X509Certificate2 GetAcsSigningCert(string acsMetadataEndpointUrlWithRealm)
+            //{
+            //    JsonMetadataDocument document = GetMetadataDocument(acsMetadataEndpointUrlWithRealm);
 
-                if (null != document.keys && document.keys.Count > 0)
-                {
-                    JsonKey signingKey = document.keys[0];
+            //    if (null != document.keys && document.keys.Count > 0)
+            //    {
+            //        JsonKey signingKey = document.keys[0];
 
-                    if (null != signingKey && null != signingKey.keyValue)
-                    {
-                        return new X509Certificate2(Encoding.UTF8.GetBytes(signingKey.keyValue.value));
-                    }
-                }
+            //        if (null != signingKey && null != signingKey.keyValue)
+            //        {
+            //            return new X509Certificate2(Encoding.UTF8.GetBytes(signingKey.keyValue.value));
+            //        }
+            //    }
 
-                throw new Exception("Metadata document does not contain ACS signing certificate.");
-            }
+            //    throw new Exception("Metadata document does not contain ACS signing certificate.");
+            //}
 
-            public static string GetDelegationServiceUrl(string acsMetadataEndpointUrlWithRealm)
-            {
-                JsonMetadataDocument document = GetMetadataDocument(acsMetadataEndpointUrlWithRealm);
+            //TODO: Uncomment for high trust
+            //public static string GetDelegationServiceUrl(string acsMetadataEndpointUrlWithRealm)
+            //{
+            //    JsonMetadataDocument document = GetMetadataDocument(acsMetadataEndpointUrlWithRealm);
 
-                JsonEndpoint delegationEndpoint = document.endpoints.SingleOrDefault(e => e.protocol == DelegationIssuance);
+            //    JsonEndpoint delegationEndpoint = document.endpoints.SingleOrDefault(e => e.protocol == DelegationIssuance);
 
-                if (null != delegationEndpoint)
-                {
-                    return delegationEndpoint.location;
-                }
-                throw new Exception("Metadata document does not contain Delegation Service endpoint Url");
-            }
+            //    if (null != delegationEndpoint)
+            //    {
+            //        return delegationEndpoint.location;
+            //    }
+            //    throw new Exception("Metadata document does not contain Delegation Service endpoint Url");
+            //}
 
             private static JsonMetadataDocument GetMetadataDocument(string acsMetadataEndpointUrlWithRealm)
             {

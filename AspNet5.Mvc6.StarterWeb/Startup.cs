@@ -41,7 +41,8 @@ namespace AspNet5.Mvc6.StarterWeb
             {
                 o.IdleTimeout = TimeSpan.FromSeconds(10);
             });
-            services.AddSharePointAuthentication(Configuration.GetSection("SharePointAuthentication"));
+            var config = Configuration.GetSection("SharePointAuthentication");
+            services.AddSharePointAuthentication(config, a=>a.Configuration=config);
 
             // Add framework services.
             services.AddMvc();
@@ -72,13 +73,14 @@ namespace AspNet5.Mvc6.StarterWeb
 
             //app.UseIISPlatformHandler();
 
-            //app.UseSession(); //TODO: should we move this as SharePointAuthenticationOption //inject to configuration
+            app.UseSession();
             app.UseStaticFiles(new StaticFileOptions() {DefaultContentType = "ss"});
 
             //Add SharePoint authentication capabilities
             app.UseSharePointAuthentication(new SharePointAuthenticationOptions()
                     {
-                        RequireHttpsMetadata = true
+                        RequireHttpsMetadata = true,
+                        Configuration = Configuration.GetSection("SharePointAuthentication")
                     }
                 );
 

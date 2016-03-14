@@ -21,31 +21,20 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             var defaultSheme = SharePointAuthenticationDefaults.AuthenticationScheme;
             AuthenticateResult result = AuthenticateResult.Failed("Could not get the RedirectionStatus");
             
+            SharePointContextProvider.GetInstance(Options.Configuration);
             switch (SharePointContextProvider.CheckRedirectionStatus(Context, out redirectUrl))
             {
                 case RedirectionStatus.Ok:
-                    var principal = new ClaimsPrincipal();
                     var spContext = SharePointContextProvider.Current.GetSharePointContext(Context);
-                    using (var clientContext = spContext.CreateUserClientContextForSPHost())
-                    {
-                        if (clientContext != null)
-                        {
-                            User spUser = null;
-                            spUser = clientContext.Web.CurrentUser;
-                            clientContext.Load(spUser, user => user.Title);
-                            clientContext.ExecuteQuery();
+                    var principal = new ClaimsPrincipal();
 
-                            GenericIdentity identity = new GenericIdentity(spUser.Title);
-                            principal.AddIdentity(identity);
+                    GenericIdentity identity = new GenericIdentity(spContext.UserAccessTokenForSPHost);
+                    principal.AddIdentity(identity);
 
-                            var ticket = new AuthenticationTicket(principal, new AuthenticationProperties(), defaultSheme);
-                            
-                            //handle the sign in method of the auth middleware
-                            await Context.Authentication.SignInAsync(defaultSheme, principal);
-
-                            result = AuthenticateResult.Success(ticket);
-                        }
-                    }
+                    var ticket = new AuthenticationTicket(principal, new AuthenticationProperties(), defaultSheme);
+                    //handle the sign in method of the auth middleware
+                    await Context.Authentication.SignInAsync(defaultSheme, principal);
+                    result = AuthenticateResult.Success(ticket);
                     break;
                 case RedirectionStatus.ShouldRedirect:
                     //filterContext.Result = new RedirectResult(redirectUrl.AbsoluteUri); //TODO: should I investigate

@@ -6,12 +6,12 @@ using System.Reflection;
 using System.Security.Principal;
 using System.Web;
 using Microsoft.AspNet.Http;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.S2S.Protocols.OAuth2;
 using Microsoft.IdentityModel.S2S.Tokens;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.SharePoint.Client;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 using HttpContext = Microsoft.AspNet.Http.HttpContext;
 using HttpRequest = Microsoft.AspNet.Http.HttpRequest;
 
@@ -31,11 +31,11 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
         protected static readonly TimeSpan AccessTokenLifetimeTolerance = TimeSpan.FromMinutes(5.0);
 
-        private readonly Uri spHostUrl;
-        private readonly Uri spAppWebUrl;
-        private readonly string spLanguage;
-        private readonly string spClientTag;
-        private readonly string spProductNumber;
+        private readonly Uri _spHostUrl;
+        private readonly Uri _spAppWebUrl;
+        private readonly string _spLanguage;
+        private readonly string _spClientTag;
+        private readonly string _spProductNumber;
 
         // <AccessTokenString, UtcExpiresOn>
         protected Tuple<string, DateTime> userAccessTokenForSPHost;
@@ -55,7 +55,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 throw new ArgumentNullException("httpRequest");
             }
 
-            string spHostUrlString = TokenHelper.EnsureTrailingSlash(httpRequest.Query[SPHostUrlKey]);
+            string spHostUrlString = TokenHandler.EnsureTrailingSlash(httpRequest.Query[SPHostUrlKey]);
             Uri spHostUrl;
             if (Uri.TryCreate(spHostUrlString, UriKind.Absolute, out spHostUrl) &&
                 (spHostUrl.Scheme == Uri.UriSchemeHttp || spHostUrl.Scheme == Uri.UriSchemeHttps))
@@ -79,42 +79,32 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <summary>
         /// The SharePoint host url.
         /// </summary>
-        public Uri SPHostUrl
-        {
-            get { return this.spHostUrl; }
-        }
+        public Uri SPHostUrl => this._spHostUrl;
 
         /// <summary>
         /// The SharePoint app web url.
         /// </summary>
-        public Uri SPAppWebUrl
-        {
-            get { return this.spAppWebUrl; }
-        }
+        public Uri SPAppWebUrl => this._spAppWebUrl;
 
         /// <summary>
         /// The SharePoint language.
         /// </summary>
-        public string SPLanguage
-        {
-            get { return this.spLanguage; }
-        }
+        public string SPLanguage => this._spLanguage;
 
         /// <summary>
         /// The SharePoint client tag.
         /// </summary>
-        public string SPClientTag
-        {
-            get { return this.spClientTag; }
-        }
+        public string SPClientTag => this._spClientTag;
 
         /// <summary>
         /// The SharePoint product number.
         /// </summary>
-        public string SPProductNumber
-        {
-            get { return this.spProductNumber; }
-        }
+        public string SPProductNumber => this._spProductNumber;
+
+        /// <summary>
+        /// The app only access TokenHandler for the SharePoint app web.
+        /// </summary>
+        public TokenHandler TokenHandler { get; protected set; }
 
         /// <summary>
         /// The user access token for the SharePoint host.
@@ -156,33 +146,34 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="spLanguage">The SharePoint language.</param>
         /// <param name="spClientTag">The SharePoint client tag.</param>
         /// <param name="spProductNumber">The SharePoint product number.</param>
+        /// <param name="configuration">The injected IConfiguration object.</param>
         protected SharePointContext(Uri spHostUrl, Uri spAppWebUrl, string spLanguage, string spClientTag, string spProductNumber)
         {
             if (spHostUrl == null)
             {
-                throw new ArgumentNullException("spHostUrl");
+                throw new ArgumentNullException(nameof(spHostUrl));
             }
 
             if (string.IsNullOrEmpty(spLanguage))
             {
-                throw new ArgumentNullException("spLanguage");
+                throw new ArgumentNullException(nameof(spLanguage));
             }
 
             if (string.IsNullOrEmpty(spClientTag))
             {
-                throw new ArgumentNullException("spClientTag");
+                throw new ArgumentNullException(nameof(spClientTag));
             }
 
             if (string.IsNullOrEmpty(spProductNumber))
             {
-                throw new ArgumentNullException("spProductNumber");
+                throw new ArgumentNullException(nameof(spProductNumber));
             }
 
-            this.spHostUrl = spHostUrl;
-            this.spAppWebUrl = spAppWebUrl;
-            this.spLanguage = spLanguage;
-            this.spClientTag = spClientTag;
-            this.spProductNumber = spProductNumber;
+            this._spHostUrl = spHostUrl;
+            this._spAppWebUrl = spAppWebUrl;
+            this._spLanguage = spLanguage;
+            this._spClientTag = spClientTag;
+            this._spProductNumber = spProductNumber;
         }
 
         /// <summary>
@@ -250,11 +241,11 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="spSiteUrl">The site url.</param>
         /// <param name="accessToken">The access token.</param>
         /// <returns>A ClientContext instance.</returns>
-        private static ClientContext CreateClientContext(Uri spSiteUrl, string accessToken)
+        private ClientContext CreateClientContext(Uri spSiteUrl, string accessToken)
         {
             if (spSiteUrl != null && !string.IsNullOrEmpty(accessToken))
             {
-                return TokenHelper.GetClientContextWithAccessToken(spSiteUrl.AbsoluteUri, accessToken);
+                return TokenHandler.GetClientContextWithAccessToken(spSiteUrl.AbsoluteUri, accessToken);
             }
 
             return null;
@@ -276,24 +267,61 @@ namespace OfficeDevPnP.Core.Framework.Authentication
     /// </summary>
     public abstract class SharePointContextProvider
     {
-        private static SharePointContextProvider current;
+        private static SharePointContextProvider _current;
+        private static TokenHandler _tokenHandler;
+        private static IConfiguration _configuration;
 
         /// <summary>
         /// The current SharePointContextProvider instance.
         /// </summary>
-        public static SharePointContextProvider Current
+        public static SharePointContextProvider Current => _current;
+
+        /// <summary>
+        /// TokenHandler instance.
+        /// </summary>
+        protected static TokenHandler TokenHandler
         {
-            get { return current; }
+            get { return _tokenHandler; }
+            set { _tokenHandler = value; }
+        }
+
+        /// <summary>
+        /// IConfiguration instance.
+        /// </summary>
+        protected static IConfiguration Configuration
+        {
+            get { return _configuration; }
+            set { _configuration = value; }
         }
 
         /// <summary>
         /// Initializes the default SharePointContextProvider instance.
         /// </summary>
-        static SharePointContextProvider()
+        //protected SharePointContextProvider() //TODO: delete and use getInstance() instead
+        //{
+        //    _tokenHandler = new TokenHandler(_configuration);
+        //    if (!_tokenHandler.IsHighTrustApp())
+        //    {
+        //        _current = new SharePointAcsContextProvider();
+        //    }
+        //    else
+        //    {
+        //        throw new NotImplementedException();
+        //        //current = new SharePointHighTrustContextProvider(); 
+        //    }
+        //    //return this;
+        //}
+
+        /// <summary>
+        /// Initializes the default SharePointContextProvider instance.
+        /// </summary>
+        public static void GetInstance(IConfiguration configuration)
         {
-            if (!TokenHelper.IsHighTrustApp())
+            _tokenHandler = new TokenHandler(configuration);
+            _configuration = configuration;
+            if (!_tokenHandler.IsHighTrustApp())
             {
-                current = new SharePointAcsContextProvider();
+                _current = new SharePointAcsContextProvider();
             }
             else
             {
@@ -311,10 +339,10 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         {
             if (provider == null)
             {
-                throw new ArgumentNullException("provider");
+                throw new ArgumentNullException(nameof(provider));
             }
 
-            current = provider;
+            _current = provider;
         }
 
         /// <summary>
@@ -364,7 +392,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 return RedirectionStatus.CanNotRedirect;
             }
 
-            Uri requestUrl = new Uri(httpContext.Request.Path); //TODO: check
+            Uri requestUrl = new Uri(httpContext.Request.Path);
 
             var queryNameValueCollection = HttpUtility.ParseQueryString(requestUrl.Query);
 
@@ -387,7 +415,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             returnUrlString = returnUrlString.Insert(returnUrlString.IndexOf("?") + 1, StandardTokens + "&");
 
             // Constructs redirect url.
-            string redirectUrlString = TokenHelper.GetAppContextTokenRequestUrl(spHostUrl.AbsoluteUri, Uri.EscapeDataString(returnUrlString));
+            string redirectUrlString = TokenHandler.GetAppContextTokenRequestUrl(spHostUrl.AbsoluteUri, Uri.EscapeDataString(returnUrlString));
 
             redirectUrl = new Uri(redirectUrlString, UriKind.Absolute);
 
@@ -425,7 +453,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             }
 
             // SPAppWebUrl
-            string spAppWebUrlString = TokenHelper.EnsureTrailingSlash(httpRequest.Query[SharePointContext.SPAppWebUrlKey]);
+            string spAppWebUrlString = TokenHandler.EnsureTrailingSlash(httpRequest.Query[SharePointContext.SPAppWebUrlKey]);
             Uri spAppWebUrl;
             if (!Uri.TryCreate(spAppWebUrlString, UriKind.Absolute, out spAppWebUrl) ||
                 !(spAppWebUrl.Scheme == Uri.UriSchemeHttp || spAppWebUrl.Scheme == Uri.UriSchemeHttps))
@@ -580,12 +608,14 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             get { return this.contextTokenObj.ValidTo > DateTime.UtcNow ? this.contextTokenObj.RefreshToken : null; }
         }
 
+        
+
         public override string UserAccessTokenForSPHost
         {
             get
             {
                 return GetAccessTokenString(ref this.userAccessTokenForSPHost,
-                                            () => TokenHelper.GetAccessToken(this.contextTokenObj, this.SPHostUrl.Authority));
+                                            () => TokenHandler.GetAccessToken(this.contextTokenObj, this.SPHostUrl.Authority));
             }
         }
 
@@ -599,7 +629,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 }
 
                 return GetAccessTokenString(ref this.userAccessTokenForSPAppWeb,
-                                            () => TokenHelper.GetAccessToken(this.contextTokenObj, this.SPAppWebUrl.Authority));
+                                            () => TokenHandler.GetAccessToken(this.contextTokenObj, this.SPAppWebUrl.Authority));
             }
         }
 
@@ -608,7 +638,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             get
             {
                 return GetAccessTokenString(ref this.appOnlyAccessTokenForSPHost,
-                                            () => TokenHelper.GetAppOnlyAccessToken(TokenHelper.SharePointPrincipal, this.SPHostUrl.Authority, TokenHelper.GetRealmFromTargetUrl(this.SPHostUrl)));
+                                            () => TokenHandler.GetAppOnlyAccessToken(TokenHandler.SharePointPrincipal, this.SPHostUrl.Authority, TokenHandler.GetRealmFromTargetUrl(this.SPHostUrl)));
             }
         }
 
@@ -622,11 +652,11 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 }
 
                 return GetAccessTokenString(ref this.appOnlyAccessTokenForSPAppWeb,
-                                            () => TokenHelper.GetAppOnlyAccessToken(TokenHelper.SharePointPrincipal, this.SPAppWebUrl.Authority, TokenHelper.GetRealmFromTargetUrl(this.SPAppWebUrl)));
+                                            () => TokenHandler.GetAppOnlyAccessToken(TokenHandler.SharePointPrincipal, this.SPAppWebUrl.Authority, TokenHandler.GetRealmFromTargetUrl(this.SPAppWebUrl)));
             }
         }
 
-        public SharePointAcsContext(Uri spHostUrl, Uri spAppWebUrl, string spLanguage, string spClientTag, string spProductNumber, string contextToken, SharePointContextToken contextTokenObj)
+        public SharePointAcsContext(Uri spHostUrl, Uri spAppWebUrl, string spLanguage, string spClientTag, string spProductNumber, string contextToken, SharePointContextToken contextTokenObj, IConfiguration configuration)
             : base(spHostUrl, spAppWebUrl, spLanguage, spClientTag, spProductNumber)
         {
             if (string.IsNullOrEmpty(contextToken))
@@ -641,6 +671,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
             this.contextToken = contextToken;
             this.contextTokenObj = contextTokenObj;
+            this.TokenHandler = new TokenHandler(configuration);
         }
 
         /// <summary>
@@ -699,7 +730,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
         protected override SharePointContext CreateSharePointContext(Uri spHostUrl, Uri spAppWebUrl, string spLanguage, string spClientTag, string spProductNumber, HttpRequest httpRequest)
         {
-            string contextTokenString = TokenHelper.GetContextTokenFromRequest(httpRequest);
+            string contextTokenString = TokenHandler.GetContextTokenFromRequest(httpRequest);
             if (string.IsNullOrEmpty(contextTokenString))
             {
                 return null;
@@ -708,7 +739,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             SharePointContextToken contextToken = null;
             try
             {
-                contextToken = TokenHelper.ReadAndValidateContextToken(contextTokenString, httpRequest.Host.Value);
+                contextToken = TokenHandler.ReadAndValidateContextToken(contextTokenString, httpRequest.Host.Value);
             }
             catch (WebException)
             {
@@ -719,7 +750,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 return null;
             }
 
-            return new SharePointAcsContext(spHostUrl, spAppWebUrl, spLanguage, spClientTag, spProductNumber, contextTokenString, contextToken);
+            return new SharePointAcsContext(spHostUrl, spAppWebUrl, spLanguage, spClientTag, spProductNumber, contextTokenString, contextToken, Configuration);
         }
 
         protected override bool ValidateSharePointContext(SharePointContext spContext, HttpContext httpContext)
@@ -729,7 +760,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             if (spAcsContext != null)
             {
                 Uri spHostUrl = SharePointContext.GetSPHostUrl(httpContext.Request);
-                string contextToken = TokenHelper.GetContextTokenFromRequest(httpContext.Request);
+                string contextToken = TokenHandler.GetContextTokenFromRequest(httpContext.Request);
                 HttpCookie spCacheKeyCookie = new HttpCookie(string.Empty, httpContext.Request.Cookies[SPCacheKeyKey]);
                 string spCacheKey = spCacheKeyCookie != null ? spCacheKeyCookie.Value : null;
 
@@ -756,8 +787,8 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             System.Buffer.BlockCopy(value, 0, chars, 0, value.Length);
             string acsSessionContext = new string(chars);
             var dto = JsonConvert.DeserializeObject<SharePointAcsContextDto>(acsSessionContext);
-            var contextTokenObj = TokenHelper.ReadAndValidateContextToken(dto.ContextToken, httpContext.Request.Host.Value);
-            return new SharePointAcsContext(dto.SpHostUrl,dto.SpAppWebUrl,dto.SpLanguage,dto.SpClientTag,dto.SpProductNumber,dto.ContextToken, contextTokenObj);
+            var contextTokenObj = TokenHandler.ReadAndValidateContextToken(dto.ContextToken, httpContext.Request.Host.Value);
+            return new SharePointAcsContext(dto.SpHostUrl,dto.SpAppWebUrl,dto.SpLanguage,dto.SpClientTag,dto.SpProductNumber,dto.ContextToken, contextTokenObj, Configuration);
         }
 
         protected override void SaveSharePointContext(SharePointContext spContext, HttpContext httpContext)
@@ -793,112 +824,112 @@ namespace OfficeDevPnP.Core.Framework.Authentication
     /// <summary>
     /// Encapsulates all the information from SharePoint in HighTrust mode.
     /// </summary>
-    public class SharePointHighTrustContext : SharePointContext
-    {
-        private readonly WindowsIdentity logonUserIdentity;
+    //public class SharePointHighTrustContext : SharePointContext
+    //{
+    //    private readonly WindowsIdentity logonUserIdentity;
 
-        /// <summary>
-        /// The Windows identity for the current user.
-        /// </summary>
-        public WindowsIdentity LogonUserIdentity
-        {
-            get { return this.logonUserIdentity; }
-        }
+    //    /// <summary>
+    //    /// The Windows identity for the current user.
+    //    /// </summary>
+    //    public WindowsIdentity LogonUserIdentity
+    //    {
+    //        get { return this.logonUserIdentity; }
+    //    }
 
-        public override string UserAccessTokenForSPHost
-        {
-            get
-            {
-                return GetAccessTokenString(ref this.userAccessTokenForSPHost,
-                                            () => TokenHelper.GetS2SAccessTokenWithWindowsIdentity(this.SPHostUrl, this.LogonUserIdentity));
-            }
-        }
+    //    public override string UserAccessTokenForSPHost
+    //    {
+    //        get
+    //        {
+    //            return GetAccessTokenString(ref this.userAccessTokenForSPHost,
+    //                                        () => TokenHandler.GetS2SAccessTokenWithWindowsIdentity(this.SPHostUrl, this.LogonUserIdentity));
+    //        }
+    //    }
 
-        public override string UserAccessTokenForSPAppWeb
-        {
-            get
-            {
-                if (this.SPAppWebUrl == null)
-                {
-                    return null;
-                }
+    //    public override string UserAccessTokenForSPAppWeb
+    //    {
+    //        get
+    //        {
+    //            if (this.SPAppWebUrl == null)
+    //            {
+    //                return null;
+    //            }
 
-                return GetAccessTokenString(ref this.userAccessTokenForSPAppWeb,
-                                            () => TokenHelper.GetS2SAccessTokenWithWindowsIdentity(this.SPAppWebUrl, this.LogonUserIdentity));
-            }
-        }
+    //            return GetAccessTokenString(ref this.userAccessTokenForSPAppWeb,
+    //                                        () => TokenHandler.GetS2SAccessTokenWithWindowsIdentity(this.SPAppWebUrl, this.LogonUserIdentity));
+    //        }
+    //    }
 
-        public override string AppOnlyAccessTokenForSPHost
-        {
-            get
-            {
-                return GetAccessTokenString(ref this.appOnlyAccessTokenForSPHost,
-                                            () => TokenHelper.GetS2SAccessTokenWithWindowsIdentity(this.SPHostUrl, null));
-            }
-        }
+    //    public override string AppOnlyAccessTokenForSPHost
+    //    {
+    //        get
+    //        {
+    //            return GetAccessTokenString(ref this.appOnlyAccessTokenForSPHost,
+    //                                        () => TokenHandler.GetS2SAccessTokenWithWindowsIdentity(this.SPHostUrl, null));
+    //        }
+    //    }
 
-        public override string AppOnlyAccessTokenForSPAppWeb
-        {
-            get
-            {
-                if (this.SPAppWebUrl == null)
-                {
-                    return null;
-                }
+    //    public override string AppOnlyAccessTokenForSPAppWeb
+    //    {
+    //        get
+    //        {
+    //            if (this.SPAppWebUrl == null)
+    //            {
+    //                return null;
+    //            }
 
-                return GetAccessTokenString(ref this.appOnlyAccessTokenForSPAppWeb,
-                                            () => TokenHelper.GetS2SAccessTokenWithWindowsIdentity(this.SPAppWebUrl, null));
-            }
-        }
+    //            return GetAccessTokenString(ref this.appOnlyAccessTokenForSPAppWeb,
+    //                                        () => TokenHandler.GetS2SAccessTokenWithWindowsIdentity(this.SPAppWebUrl, null));
+    //        }
+    //    }
 
-        public SharePointHighTrustContext(Uri spHostUrl, Uri spAppWebUrl, string spLanguage, string spClientTag, string spProductNumber, WindowsIdentity logonUserIdentity)
-            : base(spHostUrl, spAppWebUrl, spLanguage, spClientTag, spProductNumber)
-        {
-            if (logonUserIdentity == null)
-            {
-                throw new ArgumentNullException("logonUserIdentity");
-            }
+    //    public SharePointHighTrustContext(Uri spHostUrl, Uri spAppWebUrl, string spLanguage, string spClientTag, string spProductNumber, WindowsIdentity logonUserIdentity)
+    //        : base(spHostUrl, spAppWebUrl, spLanguage, spClientTag, spProductNumber)
+    //    {
+    //        if (logonUserIdentity == null)
+    //        {
+    //            throw new ArgumentNullException("logonUserIdentity");
+    //        }
 
-            this.logonUserIdentity = logonUserIdentity;
-        }
+    //        this.logonUserIdentity = logonUserIdentity;
+    //    }
 
-        /// <summary>
-        /// Ensures the access token is valid and returns it.
-        /// </summary>
-        /// <param name="accessToken">The access token to verify.</param>
-        /// <param name="tokenRenewalHandler">The token renewal handler.</param>
-        /// <returns>The access token string.</returns>
-        private static string GetAccessTokenString(ref Tuple<string, DateTime> accessToken, Func<string> tokenRenewalHandler)
-        {
-            RenewAccessTokenIfNeeded(ref accessToken, tokenRenewalHandler);
+    //    /// <summary>
+    //    /// Ensures the access token is valid and returns it.
+    //    /// </summary>
+    //    /// <param name="accessToken">The access token to verify.</param>
+    //    /// <param name="tokenRenewalHandler">The token renewal handler.</param>
+    //    /// <returns>The access token string.</returns>
+    //    private static string GetAccessTokenString(ref Tuple<string, DateTime> accessToken, Func<string> tokenRenewalHandler)
+    //    {
+    //        RenewAccessTokenIfNeeded(ref accessToken, tokenRenewalHandler);
 
-            return IsAccessTokenValid(accessToken) ? accessToken.Item1 : null;
-        }
+    //        return IsAccessTokenValid(accessToken) ? accessToken.Item1 : null;
+    //    }
 
-        /// <summary>
-        /// Renews the access token if it is not valid.
-        /// </summary>
-        /// <param name="accessToken">The access token to renew.</param>
-        /// <param name="tokenRenewalHandler">The token renewal handler.</param>
-        private static void RenewAccessTokenIfNeeded(ref Tuple<string, DateTime> accessToken, Func<string> tokenRenewalHandler)
-        {
-            if (IsAccessTokenValid(accessToken))
-            {
-                return;
-            }
+    //    /// <summary>
+    //    /// Renews the access token if it is not valid.
+    //    /// </summary>
+    //    /// <param name="accessToken">The access token to renew.</param>
+    //    /// <param name="tokenRenewalHandler">The token renewal handler.</param>
+    //    private static void RenewAccessTokenIfNeeded(ref Tuple<string, DateTime> accessToken, Func<string> tokenRenewalHandler)
+    //    {
+    //        if (IsAccessTokenValid(accessToken))
+    //        {
+    //            return;
+    //        }
 
-            DateTime expiresOn = DateTime.UtcNow.Add(TokenHelper.HighTrustAccessTokenLifetime);
+    //        DateTime expiresOn = DateTime.UtcNow.Add(TokenHandler.HighTrustAccessTokenLifetime);
 
-            if (TokenHelper.HighTrustAccessTokenLifetime > AccessTokenLifetimeTolerance)
-            {
-                // Make the access token get renewed a bit earlier than the time when it expires
-                // so that the calls to SharePoint with it will have enough time to complete successfully.
-                expiresOn -= AccessTokenLifetimeTolerance;
-            }
+    //        if (TokenHandler.HighTrustAccessTokenLifetime > AccessTokenLifetimeTolerance)
+    //        {
+    //            // Make the access token get renewed a bit earlier than the time when it expires
+    //            // so that the calls to SharePoint with it will have enough time to complete successfully.
+    //            expiresOn -= AccessTokenLifetimeTolerance;
+    //        }
 
-            accessToken = Tuple.Create(tokenRenewalHandler(), expiresOn);
-        }
-    }
+    //        accessToken = Tuple.Create(tokenRenewalHandler(), expiresOn);
+    //    }
+    //}
 
     /// <summary>
     /// Default provider for SharePointHighTrustContext.
