@@ -14,6 +14,7 @@ using System.Text;
 //using System.Web;
 using Microsoft.AspNet.Http;
 using System.Web.Configuration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel;
 using Microsoft.IdentityModel.S2S.Protocols.OAuth2;
 using Microsoft.IdentityModel.S2S.Tokens;
@@ -27,7 +28,7 @@ using X509SigningCredentials = Microsoft.IdentityModel.SecurityTokenService.X509
 
 namespace OfficeDevPnP.Core.Framework.Authentication
 {
-    public static class TokenHelper
+    public class TokenHelper
     {
         #region public fields
 
@@ -51,18 +52,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// </summary>
         /// <param name="request">HttpRequest in which to look for a context token</param>
         /// <returns>The context token string</returns>
-        //public static string GetContextTokenFromRequest(HttpRequest request)
-        //{
-        //    return GetContextTokenFromRequest(new HttpRequestWrapper(request));
-        //}
-
-        /// <summary>
-        /// Retrieves the context token string from the specified request by looking for well-known parameter names in the 
-        /// POSTed form parameters and the querystring. Returns null if no context token is found.
-        /// </summary>
-        /// <param name="request">HttpRequest in which to look for a context token</param>
-        /// <returns>The context token string</returns>
-        public static string GetContextTokenFromRequest(HttpRequest request)
+        public string GetContextTokenFromRequest(HttpRequest request)
         {
             string[] paramNames = { "AppContext", "AppContextToken", "AccessToken", "SPAppToken" };
             foreach (string paramName in paramNames)
@@ -93,7 +83,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// If null, HostedAppHostName web.config setting is used instead. HostedAppHostNameOverride web.config setting, if present, will be used 
         /// for validation instead of <paramref name="appHostName"/> .</param>
         /// <returns>A JsonWebSecurityToken based on the context token.</returns>
-        public static SharePointContextToken ReadAndValidateContextToken(string contextTokenString, string appHostName = null)
+        public SharePointContextToken ReadAndValidateContextToken(string contextTokenString, string appHostName = null)
         {
             JsonWebSecurityTokenHandler tokenHandler = CreateJsonWebSecurityTokenHandler();
             SecurityToken securityToken = tokenHandler.ReadToken(contextTokenString);
@@ -103,19 +93,19 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             string stsAuthority = (new Uri(token.SecurityTokenServiceUri)).Authority;
             int firstDot = stsAuthority.IndexOf('.');
 
-            GlobalEndPointPrefix = stsAuthority.Substring(0, firstDot);
-            AcsHostUrl = stsAuthority.Substring(firstDot + 1);
+            _globalEndPointPrefix = stsAuthority.Substring(0, firstDot);
+            _acsHostUrl = stsAuthority.Substring(firstDot + 1);
 
             tokenHandler.ValidateToken(jsonToken);
 
             string[] acceptableAudiences;
-            if (!String.IsNullOrEmpty(HostedAppHostNameOverride))
+            if (!String.IsNullOrEmpty(_hostedAppHostNameOverride))
             {
-                acceptableAudiences = HostedAppHostNameOverride.Split(';');
+                acceptableAudiences = _hostedAppHostNameOverride.Split(';');
             }
             else if (appHostName == null)
             {
-                acceptableAudiences = new[] { HostedAppHostName };
+                acceptableAudiences = new[] { _hostedAppHostName };
             }
             else
             {
@@ -123,10 +113,10 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             }
 
             bool validationSuccessful = false;
-            string realm = Realm ?? token.Realm;
+            string realm = _realm ?? token.Realm;
             foreach (var audience in acceptableAudiences)
             {
-                string principal = GetFormattedPrincipal(ClientId, audience, realm);
+                string principal = GetFormattedPrincipal(_clientId, audience, realm);
                 if (StringComparer.OrdinalIgnoreCase.Equals((string) token.Audience, principal))
                 {
                     validationSuccessful = true;
@@ -137,8 +127,8 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             if (!validationSuccessful)
             {
                 throw new AudienceUriValidationFailedException(
-                    String.Format(CultureInfo.CurrentCulture,
-                    "\"{0}\" is not the intended audience \"{1}\"", String.Join(";", acceptableAudiences), token.Audience));
+                    string.Format(CultureInfo.CurrentCulture,
+                    "\"{0}\" is not the intended audience \"{1}\"", string.Join(";", acceptableAudiences), token.Audience));
             }
 
             return token;
@@ -151,7 +141,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="contextToken">Context token issued by the intended access token audience</param>
         /// <param name="targetHost">Url authority of the target principal</param>
         /// <returns>An access token with an audience matching the context token's source</returns>
-        public static OAuth2AccessTokenResponse GetAccessToken(SharePointContextToken contextToken, string targetHost)
+        public OAuth2AccessTokenResponse GetAccessToken(SharePointContextToken contextToken, string targetHost)
         {
             string targetPrincipalName = contextToken.TargetPrincipalName;
 
@@ -163,7 +153,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 return null;
             }
 
-            string targetRealm = Realm ?? contextToken.Realm;
+            string targetRealm = _realm ?? contextToken.Realm;
 
             return GetAccessToken(refreshToken,
                                   targetPrincipalName,
@@ -182,7 +172,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="targetRealm">Realm to use for the access token's nameid and audience</param>
         /// <param name="redirectUri">Redirect URI registerd for this app</param>
         /// <returns>An access token with an audience of the target principal</returns>
-        public static OAuth2AccessTokenResponse GetAccessToken(
+        public OAuth2AccessTokenResponse GetAccessToken(
             string authorizationCode,
             string targetPrincipalName,
             string targetHost,
@@ -191,17 +181,17 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         {
             if (targetRealm == null)
             {
-                targetRealm = Realm;
+                targetRealm = _realm;
             }
 
             string resource = GetFormattedPrincipal(targetPrincipalName, targetHost, targetRealm);
-            string clientId = GetFormattedPrincipal(ClientId, null, targetRealm);
+            string clientId = GetFormattedPrincipal(_clientId, null, targetRealm);
 
             // Create request for token. The RedirectUri is null here.  This will fail if redirect uri is registered
             OAuth2AccessTokenRequest oauth2Request =
                 OAuth2MessageFactory.CreateAccessTokenRequestWithAuthorizationCode(
                     clientId,
-                    ClientSecret,
+                    _clientSecret,
                     authorizationCode,
                     redirectUri,
                     resource);
@@ -212,7 +202,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             try
             {
                 oauth2Response =
-                    client.Issue(AcsMetadataParser.GetStsUrl(targetRealm), oauth2Request) as OAuth2AccessTokenResponse;
+                    client.Issue(AcsMetadataParser.GetStsUrl(GetAcsMetadataEndpointUrlWithRealm(targetRealm)), oauth2Request) as OAuth2AccessTokenResponse;
             }
             catch (WebException wex)
             {
@@ -236,7 +226,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="targetHost">Url authority of the target principal</param>
         /// <param name="targetRealm">Realm to use for the access token's nameid and audience</param>
         /// <returns>An access token with an audience of the target principal</returns>
-        public static OAuth2AccessTokenResponse GetAccessToken(
+        public OAuth2AccessTokenResponse GetAccessToken(
             string refreshToken,
             string targetPrincipalName,
             string targetHost,
@@ -244,13 +234,13 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         {
             if (targetRealm == null)
             {
-                targetRealm = Realm;
+                targetRealm = _realm;
             }
 
             string resource = GetFormattedPrincipal(targetPrincipalName, targetHost, targetRealm);
-            string clientId = GetFormattedPrincipal(ClientId, null, targetRealm);
+            string clientId = GetFormattedPrincipal(_clientId, null, targetRealm);
 
-            OAuth2AccessTokenRequest oauth2Request = OAuth2MessageFactory.CreateAccessTokenRequestWithRefreshToken(clientId, ClientSecret, refreshToken, resource);
+            OAuth2AccessTokenRequest oauth2Request = OAuth2MessageFactory.CreateAccessTokenRequestWithRefreshToken(clientId, _clientSecret, refreshToken, resource);
 
             // Get token
             OAuth2S2SClient client = new OAuth2S2SClient();
@@ -281,7 +271,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="targetHost">Url authority of the target principal</param>
         /// <param name="targetRealm">Realm to use for the access token's nameid and audience</param>
         /// <returns>An access token with an audience of the target principal</returns>
-        public static OAuth2AccessTokenResponse GetAppOnlyAccessToken(
+        public OAuth2AccessTokenResponse GetAppOnlyAccessToken(
             string targetPrincipalName,
             string targetHost,
             string targetRealm)
@@ -289,13 +279,13 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
             if (targetRealm == null)
             {
-                targetRealm = Realm;
+                targetRealm = _realm;
             }
 
             string resource = GetFormattedPrincipal(targetPrincipalName, targetHost, targetRealm);
-            string clientId = GetFormattedPrincipal(ClientId, HostedAppHostName, targetRealm);
+            string clientId = GetFormattedPrincipal(_clientId, _hostedAppHostName, targetRealm);
 
-            OAuth2AccessTokenRequest oauth2Request = OAuth2MessageFactory.CreateAccessTokenRequestWithClientCredentials(clientId, ClientSecret, resource);
+            OAuth2AccessTokenRequest oauth2Request = OAuth2MessageFactory.CreateAccessTokenRequestWithClientCredentials(clientId, _clientSecret, resource);
             oauth2Request.Resource = resource;
 
             // Get token
@@ -324,7 +314,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// </summary>
         /// <param name="properties">Properties of a remote event receiver</param>
         /// <returns>A ClientContext ready to call the web where the event originated</returns>
-        public static ClientContext CreateRemoteEventReceiverClientContext(SPRemoteEventProperties properties)
+        public  ClientContext CreateRemoteEventReceiverClientContext(SPRemoteEventProperties properties)
         {
             Uri sharepointUrl;
             if (properties.ListEventProperties != null)
@@ -358,7 +348,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="properties">Properties of an app event</param>
         /// <param name="useAppWeb">True to target the app web, false to target the host web</param>
         /// <returns>A ClientContext ready to call the app web or the parent web</returns>
-        public static ClientContext CreateAppEventClientContext(SPRemoteEventProperties properties, bool useAppWeb)
+        public ClientContext CreateAppEventClientContext(SPRemoteEventProperties properties, bool useAppWeb)
         {
             if (properties.AppEventProperties == null)
             {
@@ -382,7 +372,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="authorizationCode">Authorization code to use when retrieving the access token from ACS</param>
         /// <param name="redirectUri">Redirect URI registerd for this app</param>
         /// <returns>A ClientContext ready to call targetUrl with a valid access token</returns>
-        public static ClientContext GetClientContextWithAuthorizationCode(
+        public ClientContext GetClientContextWithAuthorizationCode(
             string targetUrl,
             string authorizationCode,
             Uri redirectUri)
@@ -400,7 +390,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="targetRealm">Realm to use for the access token's nameid and audience</param>
         /// <param name="redirectUri">Redirect URI registerd for this app</param>
         /// <returns>A ClientContext ready to call targetUrl with a valid access token</returns>
-        public static ClientContext GetClientContextWithAuthorizationCode(
+        public ClientContext GetClientContextWithAuthorizationCode(
             string targetUrl,
             string targetPrincipalName,
             string authorizationCode,
@@ -421,7 +411,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="targetUrl">Url of the target SharePoint site</param>
         /// <param name="accessToken">Access token to be used when calling the specified targetUrl</param>
         /// <returns>A ClientContext ready to call targetUrl with the specified access token</returns>
-        public static ClientContext GetClientContextWithAccessToken(string targetUrl, string accessToken)
+        public ClientContext GetClientContextWithAccessToken(string targetUrl, string accessToken)
         {
             ClientContext clientContext = new ClientContext(targetUrl);
 
@@ -446,7 +436,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="appHostUrl">Url authority of the hosted app.  If this is null, the value in the HostedAppHostName
         /// of web.config will be used instead</param>
         /// <returns>A ClientContext ready to call targetUrl with a valid access token</returns>
-        public static ClientContext GetClientContextWithContextToken(
+        public ClientContext GetClientContextWithContextToken(
             string targetUrl,
             string contextTokenString,
             string appHostUrl)
@@ -468,14 +458,10 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="scope">Space-delimited permissions to request from the SharePoint site in "shorthand" format 
         /// (e.g. "Web.Read Site.Write")</param>
         /// <returns>Url of the SharePoint site's OAuth authorization page</returns>
-        public static string GetAuthorizationUrl(string contextUrl, string scope)
+        public string GetAuthorizationUrl(string contextUrl, string scope)
         {
-            return string.Format(
-                "{0}{1}?IsDlg=1&client_id={2}&scope={3}&response_type=code",
-                EnsureTrailingSlash(contextUrl),
-                AuthorizationPage,
-                ClientId,
-                scope);
+            return
+                $"{EnsureTrailingSlash(contextUrl)}{AuthorizationPage}?IsDlg=1&client_id={_clientId}&scope={scope}&response_type=code";
         }
 
         /// <summary>
@@ -488,15 +474,10 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="redirectUri">Uri to which SharePoint should redirect the browser to after consent is 
         /// granted</param>
         /// <returns>Url of the SharePoint site's OAuth authorization page</returns>
-        public static string GetAuthorizationUrl(string contextUrl, string scope, string redirectUri)
+        public string GetAuthorizationUrl(string contextUrl, string scope, string redirectUri)
         {
-            return string.Format(
-                "{0}{1}?IsDlg=1&client_id={2}&scope={3}&response_type=code&redirect_uri={4}",
-                EnsureTrailingSlash(contextUrl),
-                AuthorizationPage,
-                ClientId,
-                scope,
-                redirectUri);
+            return
+                $"{EnsureTrailingSlash(contextUrl)}{AuthorizationPage}?IsDlg=1&client_id={_clientId}&scope={scope}&response_type=code&redirect_uri={redirectUri}";
         }
 
         /// <summary>
@@ -505,14 +486,9 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="contextUrl">Absolute Url of the SharePoint site</param>
         /// <param name="redirectUri">Uri to which SharePoint should redirect the browser to with a context token</param>
         /// <returns>Url of the SharePoint site's context token redirect page</returns>
-        public static string GetAppContextTokenRequestUrl(string contextUrl, string redirectUri)
+        public string GetAppContextTokenRequestUrl(string contextUrl, string redirectUri)
         {
-            return string.Format(
-                "{0}{1}?client_id={2}&redirect_uri={3}",
-                EnsureTrailingSlash(contextUrl),
-                RedirectPage,
-                ClientId,
-                redirectUri);
+            return $"{EnsureTrailingSlash(contextUrl)}{RedirectPage}?client_id={_clientId}&redirect_uri={redirectUri}";
         }
 
         /// <summary>
@@ -523,11 +499,11 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="targetApplicationUri">Url of the target SharePoint site</param>
         /// <param name="identity">Windows identity of the user on whose behalf to create the access token</param>
         /// <returns>An access token with an audience of the target principal</returns>
-        public static string GetS2SAccessTokenWithWindowsIdentity(
+        public string GetS2SAccessTokenWithWindowsIdentity(
             Uri targetApplicationUri,
             WindowsIdentity identity)
         {
-            string realm = string.IsNullOrEmpty(Realm) ? GetRealmFromTargetUrl(targetApplicationUri) : Realm;
+            string realm = string.IsNullOrEmpty(_realm) ? GetRealmFromTargetUrl(targetApplicationUri) : _realm;
 
             JsonWebTokenClaim[] claims = identity != null ? GetClaimsWithWindowsIdentity(identity) : null;
 
@@ -543,11 +519,11 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="targetApplicationUri">Url of the target SharePoint site</param>
         /// <param name="identity">Windows identity of the user on whose behalf to create the access token</param>
         /// <returns>A ClientContext using an access token with an audience of the target application</returns>
-        public static ClientContext GetS2SClientContextWithWindowsIdentity(
+        public ClientContext GetS2SClientContextWithWindowsIdentity(
             Uri targetApplicationUri,
             WindowsIdentity identity)
         {
-            string realm = string.IsNullOrEmpty(Realm) ? GetRealmFromTargetUrl(targetApplicationUri) : Realm;
+            string realm = string.IsNullOrEmpty(_realm) ? GetRealmFromTargetUrl(targetApplicationUri) : _realm;
 
             JsonWebTokenClaim[] claims = identity != null ? GetClaimsWithWindowsIdentity(identity) : null;
 
@@ -613,9 +589,9 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// Determines if this is a high trust app.
         /// </summary>
         /// <returns>True if this is a high trust app.</returns>
-        public static bool IsHighTrustApp()
+        public bool IsHighTrustApp()
         {
-            return SigningCredentials != null;
+            return _signingCredentials != null;
         }
 
         /// <summary>
@@ -650,36 +626,61 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         private const string NameIdentifierClaimType = JsonWebTokenConstants.ReservedClaims.NameIdentifier;
         private const string TrustedForImpersonationClaimType = "trustedfordelegation";
         private const string ActorTokenClaimType = JsonWebTokenConstants.ReservedClaims.ActorToken;
+        private const string ConfigurationSectionName = "SharePointAuthentication";
 
         //
         // Environment Constants
         //
 
-        private static string GlobalEndPointPrefix = "accounts";
-        private static string AcsHostUrl = "accesscontrol.windows.net";
+        private string _globalEndPointPrefix = "accounts";
+        private string _acsHostUrl = "accesscontrol.windows.net";
 
         //
-        // Hosted app configuration
+        // Injected app IConfiguration
         //
-        private static readonly string ClientId = "712afcfc-ee2e-4404-b61f-8732f158d695"; //TODO:fix hardcoded //string.IsNullOrEmpty(WebConfigurationManager.AppSettings.Get("ClientId")) ? WebConfigurationManager.AppSettings.Get("HostedAppName") : WebConfigurationManager.AppSettings.Get("ClientId");
-        private static readonly string IssuerId = string.IsNullOrEmpty(WebConfigurationManager.AppSettings.Get("IssuerId")) ? ClientId : WebConfigurationManager.AppSettings.Get("IssuerId");
-        private static readonly string HostedAppHostNameOverride = WebConfigurationManager.AppSettings.Get("HostedAppHostNameOverride");
-        private static readonly string HostedAppHostName = WebConfigurationManager.AppSettings.Get("HostedAppHostName");
-        private static readonly string ClientSecret = "1+Ucvqkh7rgshiq/SoY+S7tPxTWWiSKYCp1Einvcs2c="; //TODO:fix //string.IsNullOrEmpty(WebConfigurationManager.AppSettings.Get("ClientSecret")) ? WebConfigurationManager.AppSettings.Get("HostedAppSigningKey") : WebConfigurationManager.AppSettings.Get("ClientSecret");
-        private static readonly string SecondaryClientSecret = WebConfigurationManager.AppSettings.Get("SecondaryClientSecret");
-        private static readonly string Realm = WebConfigurationManager.AppSettings.Get("Realm");
-        private static readonly string ServiceNamespace = WebConfigurationManager.AppSettings.Get("Realm");
 
-        private static readonly string ClientSigningCertificatePath = WebConfigurationManager.AppSettings.Get("ClientSigningCertificatePath");
-        private static readonly string ClientSigningCertificatePassword = WebConfigurationManager.AppSettings.Get("ClientSigningCertificatePassword");
-        private static readonly X509Certificate2 ClientCertificate = (string.IsNullOrEmpty(ClientSigningCertificatePath) || string.IsNullOrEmpty(ClientSigningCertificatePassword)) ? null : new X509Certificate2(ClientSigningCertificatePath, ClientSigningCertificatePassword);
-        private static readonly X509SigningCredentials SigningCredentials = (ClientCertificate == null) ? null : new X509SigningCredentials(ClientCertificate, SecurityAlgorithms.RsaSha256Signature, SecurityAlgorithms.Sha256Digest);
+        private readonly string _clientId; //"712afcfc-ee2e-4404-b61f-8732f158d695"
+        private readonly string _issuerId;
+        private readonly string _hostedAppHostNameOverride;
+        private readonly string _hostedAppHostName;
+        private readonly string _clientSecret; //"1+Ucvqkh7rgshiq/SoY+S7tPxTWWiSKYCp1Einvcs2c="
+        private readonly string _secondaryClientSecret;
+        private readonly string _realm;
+        private readonly string _serviceNamespace;
+        private readonly X509SigningCredentials _signingCredentials;
+
+        #endregion
+
+        #region constructors
+
+        private TokenHelper(IConfiguration configuration)
+        {
+            var configSection = configuration.GetSection(ConfigurationSectionName);
+
+            _clientId = configSection.Get("ClientId");
+            _issuerId = string.IsNullOrEmpty(configSection.Get("IssuerId")) ? _clientId : configSection.Get("IssuerId");
+            _hostedAppHostNameOverride = configSection.Get("HostedAppHostNameOverride");
+            _hostedAppHostName = configSection.Get("HostedAppHostName");
+            _clientSecret = configSection.Get("ClientSecret");
+            _secondaryClientSecret = configSection.Get("SecondaryClientSecret");
+            _realm = configSection.Get("Realm");
+            _serviceNamespace = configSection.Get("Realm");
+
+            var clientSigningCertificatePath = configSection.Get("ClientSigningCertificatePath");
+            var clientSigningCertificatePassword = configSection.Get("ClientSigningCertificatePassword");
+            var clientCertificate = (string.IsNullOrEmpty(clientSigningCertificatePath) || string.IsNullOrEmpty(clientSigningCertificatePassword)) ? null : new X509Certificate2(clientSigningCertificatePath, clientSigningCertificatePassword);
+
+            _signingCredentials = (clientCertificate == null)
+                ? null
+                : new X509SigningCredentials(clientCertificate, SecurityAlgorithms.RsaSha256Signature,
+                    SecurityAlgorithms.Sha256Digest);
+        }
 
         #endregion
 
         #region private methods
 
-        private static ClientContext CreateAcsClientContextForUrl(SPRemoteEventProperties properties, Uri sharepointUrl)
+        private ClientContext CreateAcsClientContextForUrl(SPRemoteEventProperties properties, Uri sharepointUrl)
         {
             string contextTokenString = properties.ContextToken;
 
@@ -694,12 +695,17 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             return GetClientContextWithAccessToken(sharepointUrl.ToString(), accessToken);
         }
 
-        private static string GetAcsMetadataEndpointUrl()
+        private string GetAcsMetadataEndpointUrl()
         {
             return Path.Combine(GetAcsGlobalEndpointUrl(), AcsMetadataEndPointRelativeUrl);
         }
 
-        private static string GetFormattedPrincipal(string principalName, string hostName, string realm)
+        private string GetAcsMetadataEndpointUrlWithRealm(string realm)
+        {
+            return string.Format(CultureInfo.InvariantCulture, "{0}?realm={1}", GetAcsMetadataEndpointUrl(), realm);
+        }
+
+        private string GetFormattedPrincipal(string principalName, string hostName, string realm)
         {
             if (!String.IsNullOrEmpty(hostName))
             {
@@ -709,17 +715,17 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             return String.Format(CultureInfo.InvariantCulture, "{0}@{1}", principalName, realm);
         }
 
-        private static string GetAcsPrincipalName(string realm)
+        private string GetAcsPrincipalName(string realm)
         {
             return GetFormattedPrincipal(AcsPrincipalName, new Uri(GetAcsGlobalEndpointUrl()).Host, realm);
         }
 
-        private static string GetAcsGlobalEndpointUrl()
+        private string GetAcsGlobalEndpointUrl()
         {
-            return String.Format(CultureInfo.InvariantCulture, "https://{0}.{1}/", GlobalEndPointPrefix, AcsHostUrl);
+            return String.Format(CultureInfo.InvariantCulture, "https://{0}.{1}/", _globalEndPointPrefix, _acsHostUrl);
         }
 
-        private static JsonWebSecurityTokenHandler CreateJsonWebSecurityTokenHandler()
+        private JsonWebSecurityTokenHandler CreateJsonWebSecurityTokenHandler()
         {
             JsonWebSecurityTokenHandler handler = new JsonWebSecurityTokenHandler();
             handler.Configuration = new SecurityTokenHandlerConfiguration();
@@ -727,10 +733,10 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             handler.Configuration.CertificateValidator = X509CertificateValidator.None;
 
             List<byte[]> securityKeys = new List<byte[]>();
-            securityKeys.Add(Convert.FromBase64String(ClientSecret));
-            if (!string.IsNullOrEmpty(SecondaryClientSecret))
+            securityKeys.Add(Convert.FromBase64String(_clientSecret));
+            if (!string.IsNullOrEmpty(_secondaryClientSecret))
             {
-                securityKeys.Add(Convert.FromBase64String(SecondaryClientSecret));
+                securityKeys.Add(Convert.FromBase64String(_secondaryClientSecret));
             }
 
             List<SecurityToken> securityTokens = new List<SecurityToken>();
@@ -743,20 +749,20 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             SymmetricKeyIssuerNameRegistry issuerNameRegistry = new SymmetricKeyIssuerNameRegistry();
             foreach (byte[] securitykey in securityKeys)
             {
-                issuerNameRegistry.AddTrustedIssuer(securitykey, GetAcsPrincipalName(ServiceNamespace));
+                issuerNameRegistry.AddTrustedIssuer(securitykey, GetAcsPrincipalName(_serviceNamespace));
             }
             handler.Configuration.IssuerNameRegistry = issuerNameRegistry;
             return handler;
         }
 
-        private static string GetS2SAccessTokenWithClaims(
+        private string GetS2SAccessTokenWithClaims(
             string targetApplicationHostName,
             string targetRealm,
             IEnumerable<JsonWebTokenClaim> claims)
         {
             return IssueToken(
-                ClientId,
-                IssuerId,
+                _clientId,
+                _issuerId,
                 targetRealm,
                 SharePointPrincipal,
                 targetRealm,
@@ -766,7 +772,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 claims == null);
         }
 
-        private static JsonWebTokenClaim[] GetClaimsWithWindowsIdentity(WindowsIdentity identity)
+        private JsonWebTokenClaim[] GetClaimsWithWindowsIdentity(WindowsIdentity identity)
         {
             JsonWebTokenClaim[] claims = new JsonWebTokenClaim[]
             {
@@ -776,7 +782,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             return claims;
         }
 
-        private static string IssueToken(
+        private string IssueToken(
             string sourceApplication,
             string issuerApplication,
             string sourceRealm,
@@ -787,7 +793,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             IEnumerable<JsonWebTokenClaim> claims,
             bool appOnly = false)
         {
-            if (null == SigningCredentials)
+            if (null == _signingCredentials)
             {
                 throw new InvalidOperationException("SigningCredentials was not initialized");
             }
@@ -811,7 +817,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 audience: audience,
                 validFrom: DateTime.UtcNow,
                 validTo: DateTime.UtcNow.Add(HighTrustAccessTokenLifetime),
-                signingCredentials: SigningCredentials,
+                signingCredentials: _signingCredentials,
                 claims: actorClaims);
 
             string actorTokenString = new JsonWebSecurityTokenHandler().WriteTokenAsString(actorToken);
@@ -849,11 +855,11 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
         // This class is used to get MetaData document from the global STS endpoint. It contains
         // methods to parse the MetaData document and get endpoints and STS certificate.
-        public static class AcsMetadataParser
+        public class AcsMetadataParser
         {
-            public static X509Certificate2 GetAcsSigningCert(string realm)
+            public static X509Certificate2 GetAcsSigningCert(string acsMetadataEndpointUrlWithRealm)
             {
-                JsonMetadataDocument document = GetMetadataDocument(realm);
+                JsonMetadataDocument document = GetMetadataDocument(acsMetadataEndpointUrlWithRealm);
 
                 if (null != document.keys && document.keys.Count > 0)
                 {
@@ -868,9 +874,9 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 throw new Exception("Metadata document does not contain ACS signing certificate.");
             }
 
-            public static string GetDelegationServiceUrl(string realm)
+            public static string GetDelegationServiceUrl(string acsMetadataEndpointUrlWithRealm)
             {
-                JsonMetadataDocument document = GetMetadataDocument(realm);
+                JsonMetadataDocument document = GetMetadataDocument(acsMetadataEndpointUrlWithRealm);
 
                 JsonEndpoint delegationEndpoint = document.endpoints.SingleOrDefault(e => e.protocol == DelegationIssuance);
 
@@ -881,11 +887,8 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 throw new Exception("Metadata document does not contain Delegation Service endpoint Url");
             }
 
-            private static JsonMetadataDocument GetMetadataDocument(string realm)
+            private static JsonMetadataDocument GetMetadataDocument(string acsMetadataEndpointUrlWithRealm)
             {
-                string acsMetadataEndpointUrlWithRealm = String.Format(CultureInfo.InvariantCulture, "{0}?realm={1}",
-                                                                       GetAcsMetadataEndpointUrl(),
-                                                                       realm);
                 byte[] acsMetadata;
                 using (WebClient webClient = new WebClient())
                 {
@@ -905,9 +908,9 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 return document;
             }
 
-            public static string GetStsUrl(string realm)
+            public static string GetStsUrl(string acsMetadataEndpointUrlWithRealm)
             {
-                JsonMetadataDocument document = GetMetadataDocument(realm);
+                JsonMetadataDocument document = GetMetadataDocument(acsMetadataEndpointUrlWithRealm);
 
                 JsonEndpoint s2sEndpoint = document.endpoints.SingleOrDefault(e => e.protocol == S2SProtocol);
 
