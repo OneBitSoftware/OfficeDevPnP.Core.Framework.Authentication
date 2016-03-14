@@ -28,7 +28,7 @@ using X509SigningCredentials = Microsoft.IdentityModel.SecurityTokenService.X509
 
 namespace OfficeDevPnP.Core.Framework.Authentication
 {
-    public class TokenHelper
+    public class TokenHandler
     {
         #region public fields
 
@@ -75,7 +75,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// HostedAppHostNameOverride, HostedAppHostName, ClientSecret, and Realm (if it is specified). If HostedAppHostNameOverride is present,
         /// it will be used for validation. Otherwise, if the <paramref name="appHostName"/> is not 
         /// null, it is used for validation instead of the web.config's HostedAppHostName. If the token is invalid, an 
-        /// exception is thrown. If the token is valid, TokenHelper's static STS metadata url is updated based on the token contents
+        /// exception is thrown. If the token is valid, TokenHandler's static STS metadata url is updated based on the token contents
         /// and a JsonWebSecurityToken based on the context token is returned.
         /// </summary>
         /// <param name="contextTokenString">The context token to validate</param>
@@ -653,7 +653,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
         #region constructors
 
-        private TokenHelper(IConfiguration configuration)
+        private TokenHandler(IConfiguration configuration)
         {
             var configSection = configuration.GetSection(ConfigurationSectionName);
 
@@ -951,8 +951,6 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
         #endregion
     }
-
-
 
     /// <summary>
     /// Represents a security token which contains multiple security keys that are generated using symmetric algorithms.
