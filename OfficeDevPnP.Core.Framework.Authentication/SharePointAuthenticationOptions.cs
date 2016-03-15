@@ -22,6 +22,14 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// The default is true. This should be disabled only in development environments.
         /// </summary>
         public bool RequireHttpsMetadata { get; set; } = true;
-        public IConfiguration Configuration { get; set; }
+        public string ClientId { get; set; }
+        public string ClientSecret { get; set; }
+        public string IssuerId { get; set; }
+        public string HostedAppHostNameOverride { get; set; }
+        public string HostedAppHostName { get; set; }
+        public string SecondaryClientSecret { get; set; }
+        public string Realm { get; set; }
+        public string ClientSigningCertificatePath { get; set; }
+        public string ClientSigningCertificatePassword { get; set; }
     }
 }

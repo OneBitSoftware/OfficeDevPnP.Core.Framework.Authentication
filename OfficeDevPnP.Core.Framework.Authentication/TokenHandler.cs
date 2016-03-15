@@ -11,9 +11,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Security.Principal;
 using System.ServiceModel;
 using System.Text;
-//using System.Web;
 using Microsoft.AspNet.Http;
-using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel;
 using Microsoft.IdentityModel.S2S.Protocols.OAuth2;
 using Microsoft.IdentityModel.S2S.Tokens;
@@ -652,21 +650,19 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
         #region constructors
 
-        public TokenHandler(IConfiguration configuration)
+        public TokenHandler(ISharePointConfiguration configuration)
         {
-            var configSection = configuration; //.GetSection(ConfigurationSectionName);
+            _clientId = configuration.ClientId;
+            _issuerId = string.IsNullOrEmpty(configuration.IssuerId) ? _clientId : configuration.IssuerId;
+            _hostedAppHostNameOverride = configuration.HostedAppHostNameOverride;
+            _hostedAppHostName = configuration.HostedAppHostName;
+            _clientSecret = configuration.ClientSecret;
+            _secondaryClientSecret = configuration.SecondaryClientSecret;
+            _realm = configuration.Realm;
+            _serviceNamespace = configuration.Realm;
 
-            _clientId = configSection["ClientId"];
-            _issuerId = string.IsNullOrEmpty(configSection["IssuerId"]) ? _clientId : configSection["IssuerId"];
-            _hostedAppHostNameOverride = configSection["HostedAppHostNameOverride"];
-            _hostedAppHostName = configSection["HostedAppHostName"];
-            _clientSecret = configSection["ClientSecret"];
-            _secondaryClientSecret = configSection["SecondaryClientSecret"];
-            _realm = configSection["Realm"];
-            _serviceNamespace = configSection["Realm"];
-
-            var clientSigningCertificatePath = configSection["ClientSigningCertificatePath"];
-            var clientSigningCertificatePassword = configSection["ClientSigningCertificatePassword"];
+            var clientSigningCertificatePath = configuration.ClientSigningCertificatePath;
+            var clientSigningCertificatePassword = configuration.ClientSigningCertificatePassword;
             var clientCertificate = (string.IsNullOrEmpty(clientSigningCertificatePath) || string.IsNullOrEmpty(clientSigningCertificatePassword)) ? null : new X509Certificate2(clientSigningCertificatePath, clientSigningCertificatePassword);
 
             _signingCredentials = (clientCertificate == null)
@@ -1051,7 +1047,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         {
             if (keyIdentifierClause == null)
             {
-                throw new ArgumentNullException("keyIdentifierClause");
+                throw new ArgumentNullException(nameof(keyIdentifierClause));
             }
 
             // Since this is a symmetric token and we do not have IDs to distinguish tokens, we just check for the

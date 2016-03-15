@@ -1,30 +1,27 @@
 ﻿using Microsoft.AspNet.Authentication;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Claims;
 using System.Security.Principal;
 using System.Threading.Tasks;
-using System.Web;
 using Microsoft.AspNet.Http.Authentication;
 using Microsoft.AspNet.Http.Features.Authentication;
-using Microsoft.SharePoint.Client;
 
 namespace OfficeDevPnP.Core.Framework.Authentication
 {
     public class SharePointAuthenticationHandler : AuthenticationHandler<SharePointAuthenticationOptions>
     {
-        //private IConficuration
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
             Uri redirectUrl;
             var defaultSheme = SharePointAuthenticationDefaults.AuthenticationScheme;
             AuthenticateResult result = AuthenticateResult.Failed("Could not get the RedirectionStatus");
-            
-            SharePointContextProvider.GetInstance(Options.Configuration);
+
+            //setup the SharePoint configuration based on the middleware options
+            SharePointContextProvider.GetInstance(SharePointConfiguration.GetFromSharePointAuthenticationOptions(Options));
             switch (SharePointContextProvider.CheckRedirectionStatus(Context, out redirectUrl))
             {
                 case RedirectionStatus.Ok:
+                    //get instance of the SharePointAcsContextProvider in the SharePointContextProvider.Current property
                     var spContext = SharePointContextProvider.Current.GetSharePointContext(Context);
                     var principal = new ClaimsPrincipal();
 

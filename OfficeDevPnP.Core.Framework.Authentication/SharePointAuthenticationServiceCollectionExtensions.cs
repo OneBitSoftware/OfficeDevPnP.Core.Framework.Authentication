@@ -1,11 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNet.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
-using Microsoft.AspNet.Http.Features;
 
 namespace OfficeDevPnP.Core.Framework.Authentication  //TODO; should we use Microsoft.Extensions.DependencyInjection as it is done on the rest of the Microsoft middleware
 {
@@ -24,11 +19,11 @@ namespace OfficeDevPnP.Core.Framework.Authentication  //TODO; should we use Micr
         {
             if (services == null)
             {
-                throw new ArgumentNullException("services");
+                throw new ArgumentNullException(nameof(services));
             }
-            //services.AddTransient<ISession>();
-            //services.AddTransient<IConfigurationSection>();
-            //OptionsServiceCollectionExtensions.Configure<IConfiguration>(services, configuration);
+            //services.AddSingleton<ISharePointConfiguration>();
+            var config = SharePointConfiguration.GetFromIConfiguration(configuration);
+            services.AddInstance<ISharePointConfiguration>(config);
             return services;
         }
 
@@ -42,11 +37,11 @@ namespace OfficeDevPnP.Core.Framework.Authentication  //TODO; should we use Micr
         {
             if (services == null)
             {
-                throw new ArgumentNullException("services");
+                throw new ArgumentNullException(nameof(services));
             }
             if (configureOptions == null)
             {
-                throw new ArgumentNullException("configureOptions");
+                throw new ArgumentNullException(nameof(configureOptions));
             }
             OptionsServiceCollectionExtensions.Configure<SharePointAuthenticationOptions>(services, configureOptions);
             return services.AddSharePointAuthentication(configuration);

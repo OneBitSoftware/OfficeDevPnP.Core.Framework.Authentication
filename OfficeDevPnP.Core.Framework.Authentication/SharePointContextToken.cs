@@ -2,10 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens;
-//using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
-using System.Security.Claims;
-using System.Threading.Tasks;
 using Microsoft.IdentityModel.S2S.Tokens;
 
 namespace OfficeDevPnP.Core.Framework.Authentication
@@ -36,13 +32,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         {
         }
 
-        public string NameId
-        {
-            get
-            {
-                return GetClaimValue(this, "nameid");
-            }
-        }
+        public string NameId => GetClaimValue(this, "nameid");
 
         /// <summary>
         /// The principal name portion of the context token's "appctxsender" claim
@@ -53,25 +43,14 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             {
                 string appctxsender = GetClaimValue(this, "appctxsender");
 
-                if (appctxsender == null)
-                {
-                    return null;
-                }
-
-                return appctxsender.Split('@')[0];
+                return appctxsender?.Split('@')[0];
             }
         }
 
         /// <summary>
         /// The context token's "refreshtoken" claim
         /// </summary>
-        public string RefreshToken
-        {
-            get
-            {
-                return GetClaimValue(this, "refreshtoken");
-            }
-        }
+        public string RefreshToken => GetClaimValue(this, "refreshtoken");
 
         /// <summary>
         /// The context token's "CacheKey" claim
@@ -123,12 +102,8 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             get
             {
                 string aud = Audience;
-                if (aud == null)
-                {
-                    return null;
-                }
 
-                string tokenRealm = aud.Substring(aud.IndexOf('@') + 1);
+                string tokenRealm = aud?.Substring(aud.IndexOf('@') + 1);
 
                 return tokenRealm;
             }
@@ -138,7 +113,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         {
             if (token == null)
             {
-                throw new ArgumentNullException("token");
+                throw new ArgumentNullException(nameof(token));
             }
 
             foreach (JsonWebTokenClaim claim in token.Claims)

@@ -41,8 +41,7 @@ namespace AspNet5.Mvc6.StarterWeb
             {
                 o.IdleTimeout = TimeSpan.FromSeconds(10);
             });
-            var config = Configuration.GetSection("SharePointAuthentication");
-            services.AddSharePointAuthentication(config, a=>a.Configuration=config);
+            services.AddSharePointAuthentication(Configuration.GetSection("SharePointAuthentication"));
 
             // Add framework services.
             services.AddMvc();
@@ -72,15 +71,15 @@ namespace AspNet5.Mvc6.StarterWeb
             app.UseKestrelHttps(new X509Certificate2(testCertPath, "pass@word1"));
 
             //app.UseIISPlatformHandler();
-
             app.UseSession();
-            app.UseStaticFiles(new StaticFileOptions() {DefaultContentType = "ss"});
+            app.UseStaticFiles();
 
             //Add SharePoint authentication capabilities
             app.UseSharePointAuthentication(new SharePointAuthenticationOptions()
                     {
                         RequireHttpsMetadata = true,
-                        Configuration = Configuration.GetSection("SharePointAuthentication")
+                        ClientId = Configuration["SharePointAuthentication:ClientId"],
+                        ClientSecret = Configuration["SharePointAuthentication:ClientSecret"]
                     }
                 );
 
