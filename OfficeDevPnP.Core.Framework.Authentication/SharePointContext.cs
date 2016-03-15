@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Linq;
 using System.Net;
 using System.Runtime.CompilerServices;
 using System.Web;
 using Microsoft.AspNet.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.OptionsModel;
+using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.S2S.Protocols.OAuth2;
 using Microsoft.IdentityModel.S2S.Tokens;
 using Microsoft.IdentityModel.Tokens;
@@ -12,6 +14,7 @@ using Microsoft.SharePoint.Client;
 using Newtonsoft.Json;
 using HttpContext = Microsoft.AspNet.Http.HttpContext;
 using HttpRequest = Microsoft.AspNet.Http.HttpRequest;
+using Microsoft.AspNet.Http.Extensions;
 
 
 namespace OfficeDevPnP.Core.Framework.Authentication
@@ -397,8 +400,8 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             {
                 return RedirectionStatus.CanNotRedirect;
             }
-
-            Uri requestUrl = new Uri(httpContext.Request.Path);  //todo:fix
+            var uri = httpContext.Request.GetDisplayUrl();
+            Uri requestUrl = new Uri(uri); 
 
             var queryNameValueCollection = HttpUtility.ParseQueryString(requestUrl.Query);
 

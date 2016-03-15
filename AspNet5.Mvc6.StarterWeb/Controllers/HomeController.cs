@@ -18,7 +18,7 @@ namespace AspNet5.Mvc6.StarterWeb.Controllers
         {
             User spUser = null;
             var listTitles = new List<string>();
-            var t = _sharePointConfiguration;
+
             var spContext = SharePointContextProvider.Current.GetSharePointContext(HttpContext);
             using (var clientContext = spContext.CreateUserClientContextForSPHost())
             {
@@ -42,11 +42,9 @@ namespace AspNet5.Mvc6.StarterWeb.Controllers
         public IActionResult About()
         {
             ViewData["Message"] = "Your application description page.";
-
             User spUser = null;
             var listTitles = new List<string>();
 
-            SharePointContextProvider.GetInstance(_sharePointConfiguration);
             var spContext = SharePointContextProvider.Current.GetSharePointContext(HttpContext);
             using (var clientContext = spContext.CreateUserClientContextForSPHost())
             {

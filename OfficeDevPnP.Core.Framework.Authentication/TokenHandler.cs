@@ -51,17 +51,28 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <returns>The context token string</returns>
         public string GetContextTokenFromRequest(HttpRequest request)
         {
-            string[] paramNames = { "AppContext", "AppContextToken", "AccessToken", "SPAppToken" };
-            foreach (string paramName in paramNames)
+            try
             {
-                if (!string.IsNullOrEmpty(request.Form[paramName]))
+                string[] paramNames = { "AppContext", "AppContextToken", "AccessToken", "SPAppToken" };
+                foreach (string paramName in paramNames)
                 {
-                    return request.Form[paramName];
+                    if (!string.IsNullOrEmpty(request.Form[paramName]))
+                    {
+                        return request.Form[paramName];
+                    }
+                    if (!string.IsNullOrEmpty(request.Query[paramName]))
+                    {
+                        return request.Query[paramName];
+                    }
                 }
-                if (!string.IsNullOrEmpty(request.Query[paramName]))
-                {
-                    return request.Query[paramName];
-                }
+            }
+            catch
+            {
+                //RC1 produces exception on get request ((Microsoft.AspNet.Http.Internal.DefaultHttpRequest)request).Form
+                //where the Form should be {}
+                //not sure it is a framework, but or somethin in our code is wrong.
+                //https://github.com/aspnet/Mvc/issues/2749
+                //TODO: review later
             }
             return null;
         }
