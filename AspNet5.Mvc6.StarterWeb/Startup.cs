@@ -1,20 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Security.Cryptography.X509Certificates;
-using System.Threading.Tasks;
-using Microsoft.AspNet.Authentication;
+using AspNet5.Mvc6.StarterWeb.App_Start;
 using Microsoft.AspNet.Builder;
 using Microsoft.AspNet.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.AspNet.Server.Kestrel.Https;
-using Microsoft.AspNet.Session;
-using Microsoft.AspNet.Http;
-using Microsoft.AspNet.StaticFiles;
-using Microsoft.Extensions.Caching.Memory;
 using OfficeDevPnP.Core.Framework.Authentication;
 
 namespace AspNet5.Mvc6.StarterWeb
@@ -35,13 +26,11 @@ namespace AspNet5.Mvc6.StarterWeb
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            //services.AddAuthentication();
             services.AddCaching();
             services.AddSession(o =>
             {
                 o.IdleTimeout = TimeSpan.FromSeconds(3600);
             });
-            services.AddSharePointAuthentication(Configuration.GetSection("SharePointAuthentication"));
 
             // Add framework services.
             services.AddMvc();
@@ -65,12 +54,8 @@ namespace AspNet5.Mvc6.StarterWeb
                 app.UseExceptionHandler("/Home/Error");
             }
 
-            var testCertPath = Path.Combine(env.WebRootPath, @"../../cert/office365flask.pfx");
-            if (string.IsNullOrEmpty(testCertPath))
-            {
-                throw new ArgumentException("Missing X509Certificate2. Cannot start on SSL.");
-            }
-            app.UseKestrelHttps(new X509Certificate2(testCertPath, "pass@word1"));
+            //ConfiguerSSL
+            WebServerConfig.ConfigureSSL(app, Path.Combine(env.WebRootPath, @"../../cert/office365flask.pfx"), "pass@word1");
 
             //app.UseIISPlatformHandler();
             app.UseStaticFiles();
