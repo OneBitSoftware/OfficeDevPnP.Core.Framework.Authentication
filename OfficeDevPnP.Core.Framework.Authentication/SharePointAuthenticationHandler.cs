@@ -5,6 +5,7 @@ using System.Security.Principal;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Http.Authentication;
 using Microsoft.AspNet.Http.Features.Authentication;
+using System.Linq;
 
 namespace OfficeDevPnP.Core.Framework.Authentication
 {
@@ -24,9 +25,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                     
                     //check if we already have authenticated principal
                     ClaimsPrincipal principal;
-                    var currentUser = Context.User.Identity?.IsAuthenticated;
-
-                    if (currentUser == true)
+                    if (Context.User.Identities.Any(identity => identity.IsAuthenticated)) //TODO: needs to presist the user state (in cookie maybe). Now IsAuthenticated is false all the time
                     {
                         principal = Context.User;
                     }
