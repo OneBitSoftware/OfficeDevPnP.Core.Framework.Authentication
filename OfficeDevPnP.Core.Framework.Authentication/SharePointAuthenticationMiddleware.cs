@@ -1,13 +1,8 @@
 ﻿using Microsoft.AspNet.Authentication;
 using Microsoft.AspNet.Builder;
-using Microsoft.AspNet.Http;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.OptionsModel;
 using Microsoft.Extensions.WebEncoders;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace OfficeDevPnP.Core.Framework.Authentication
 {

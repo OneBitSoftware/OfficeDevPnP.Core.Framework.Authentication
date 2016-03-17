@@ -661,7 +661,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
         #region constructors
 
-        public TokenHandler(ISharePointConfiguration configuration)
+        public TokenHandler(SharePointConfiguration configuration)
         {
             _clientId = configuration.ClientId;
             _issuerId = string.IsNullOrEmpty(configuration.IssuerId) ? _clientId : configuration.IssuerId;

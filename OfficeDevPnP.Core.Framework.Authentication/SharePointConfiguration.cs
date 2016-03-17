@@ -3,7 +3,7 @@ using Microsoft.Extensions.OptionsModel;
 
 namespace OfficeDevPnP.Core.Framework.Authentication
 {
-    public class SharePointConfiguration : ISharePointConfiguration
+    public class SharePointConfiguration
     {
         public string ClientId { get; set; }
         public string ClientSecret { get; set; }

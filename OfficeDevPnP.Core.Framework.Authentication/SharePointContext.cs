@@ -259,7 +259,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
     {
         private static SharePointContextProvider _current;
         private static TokenHandler _tokenHandler;
-        private static ISharePointConfiguration _configuration;
+        private static SharePointConfiguration _configuration;
 
         /// <summary>
         /// The current SharePointContextProvider instance.
@@ -278,7 +278,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <summary>
         /// SharePointConfiguration instance.
         /// </summary>
-        protected static ISharePointConfiguration Configuration
+        protected static SharePointConfiguration Configuration
         {
             get { return _configuration; }
             set { _configuration = value; }
@@ -305,7 +305,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <summary>
         /// Initializes the default SharePointContextProvider instance.
         /// </summary>
-        public static SharePointContextProvider GetInstance(ISharePointConfiguration configuration)
+        public static SharePointContextProvider GetInstance(SharePointConfiguration configuration)
         {
             _tokenHandler = new TokenHandler(configuration);
             _configuration = configuration;
@@ -634,7 +634,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             }
         }
 
-        public SharePointAcsContext(Uri spHostUrl, Uri spAppWebUrl, string spLanguage, string spClientTag, string spProductNumber, string contextToken, SharePointContextToken contextTokenObj, ISharePointConfiguration configuration)
+        public SharePointAcsContext(Uri spHostUrl, Uri spAppWebUrl, string spLanguage, string spClientTag, string spProductNumber, string contextToken, SharePointContextToken contextTokenObj, SharePointConfiguration configuration)
             : base(spHostUrl, spAppWebUrl, spLanguage, spClientTag, spProductNumber)
         {
             if (string.IsNullOrEmpty(contextToken))
