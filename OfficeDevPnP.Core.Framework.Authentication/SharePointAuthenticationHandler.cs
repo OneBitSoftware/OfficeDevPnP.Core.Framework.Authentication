@@ -25,7 +25,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                     
                     //check if we already have authenticated principal
                     ClaimsPrincipal principal;
-                    if (Context.User.Identities.Any(identity => identity.IsAuthenticated)) //TODO: needs to presist the user state (in cookie maybe). Now IsAuthenticated is false all the time
+                    if (Context.User.Identities.Any(identity => identity.IsAuthenticated)) //TODO: IsAuthenticated is awlays false. To be decided wheather and how we presist the user (Context.User) state. We may not need to do it if we follow the SharePointContextProvider concept that handles context details in session.
                     {
                         principal = Context.User;
                     }
@@ -46,20 +46,32 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                     result = AuthenticateResult.Success(ticket);
                     break;
                 case RedirectionStatus.ShouldRedirect:
-                    //filterContext.Result = new RedirectResult(redirectUrl.AbsoluteUri); //TODO: Investigate
+                    // 301 is the status code of permanent redirect
+                    //Context.Response.StatusCode = 301;
+                    //Context.Response.Headers["Location"] = redirectUrl.AbsoluteUri;
+                    Response.StatusCode = 401;
                     result = AuthenticateResult.Failed("ShouldRedirect");
+                    //await HandleRequestAsync();
+                    Context.Response.Redirect(redirectUrl.AbsoluteUri);
                     break;
                 case RedirectionStatus.CanNotRedirect:
+                    Response.StatusCode = 401;
                     result = AuthenticateResult.Failed("CanNotRedirect");
                     break;
             }
             return result;
         }
-
+        
         protected override async Task HandleSignInAsync(SignInContext context)
         {
             await base.HandleSignInAsync(context);
             SignInAccepted = true;
+        }
+
+        public override async Task<bool> HandleRequestAsync()
+        {
+            return await Task.FromResult(true);
+            //option 1
         }
 
         protected override async Task<bool> HandleUnauthorizedAsync(ChallengeContext context)

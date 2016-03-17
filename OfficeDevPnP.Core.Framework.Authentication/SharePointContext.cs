@@ -287,7 +287,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <summary>
         /// Initializes the default SharePointContextProvider instance.
         /// </summary>
-        //protected SharePointContextProvider() //TODO: delete and use getInstance() instead
+        //protected SharePointContextProvider() //TODO: delete and use getInstance() instead since we neet to parse SharePointConfiguration, but this it cannot be done in static constructor
         //{
         //    _tokenHandler = new TokenHandler(_configuration);
         //    if (!_tokenHandler.IsHighTrustApp())
@@ -368,7 +368,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             }
 
             redirectUrl = null;
-            bool contextTokenExpired = false;
+            bool contextTokenExpired = false; //contextTokenExpired = true; //todo:test redirect
 
             try
             {
@@ -384,6 +384,8 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
             const string SPHasRedirectedToSharePointKey = "SPHasRedirectedToSharePoint";
 
+
+            
             if (!string.IsNullOrEmpty(httpContext.Request.Query[SPHasRedirectedToSharePointKey]) && !contextTokenExpired)
             {
                 return RedirectionStatus.CanNotRedirect;
@@ -785,6 +787,9 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         }
     }
 
+    /// <summary>
+    /// SharePointSessionData is DTO that would map serialized / deserialized data form / in the session
+    /// </summary>
     public class SharePointSessionData
     {
         public Uri SpHostUrl { get; set; }
