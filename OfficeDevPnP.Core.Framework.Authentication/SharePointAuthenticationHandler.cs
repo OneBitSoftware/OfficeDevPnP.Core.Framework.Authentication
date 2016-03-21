@@ -11,7 +11,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
     public class SharePointAuthenticationHandler : AuthenticationHandler<SharePointAuthenticationOptions>
     {
         /// <summary>
-        /// RedirectionStatus would decide if we contunue to the next middleware in the pipe
+        /// RedirectionStatus would decide if we contunue to the next middleware in the pipe.
         /// </summary>
         private RedirectionStatus _redirectionStatus;
 
@@ -21,14 +21,14 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             var defaultScheme = SharePointAuthenticationDefaults.AuthenticationScheme;
             AuthenticateResult result = AuthenticateResult.Failed("Could not get the RedirectionStatus");
 
-            //setup the SharePoint configuration based on the middleware options
+            // Sets up the SharePoint configuration based on the middleware options.
             SharePointContextProvider.GetInstance(SharePointConfiguration.GetFromSharePointAuthenticationOptions(Options));
             switch (SharePointContextProvider.CheckRedirectionStatus(Context, out redirectUrl))
             {
                 case RedirectionStatus.Ok:
                     _redirectionStatus = RedirectionStatus.Ok;
                     
-                    //check if we already have authenticated principal
+                    // Checks if we already have authenticated principal.
                     ClaimsPrincipal principal;
                     if (Context.User.Identities.Any(identity => identity.IsAuthenticated)) //TODO: IsAuthenticated is awlays false. To be decided wheather and how we presist the user (Context.User) state. We may not need to do it if we follow the SharePointContextProvider concept that handles context details in session.
                     {
@@ -36,21 +36,21 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                     }
                     else
                     {
-                        // the cookie authentication is listening for
+                        // The cookie authentication is listening for.
                         var identity = new ClaimsIdentity(defaultScheme);
 
-                        //Add empty claims to the Identity object
+                        // Adds empty claims to the Identity object.
                         var newClaims = new[]
                         {
                             new Claim(ClaimTypes.AuthenticationMethod, defaultScheme),
                         };
                         identity.AddClaims(newClaims);
 
-                        // create the authentication ticket
+                        // Creates the authentication ticket.
                         principal = new ClaimsPrincipal(identity);
 
                         principal.AddIdentity(identity);
-                        //handle the sign in method of the auth middleware
+                        // Handles the sign in method of the auth middleware.
                         await Context.Authentication.SignInAsync(defaultScheme, principal, new AuthenticationProperties()
                         {
                             ExpiresUtc = DateTimeOffset.UtcNow.AddDays(10),
@@ -91,9 +91,9 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
         public override async Task<bool> HandleRequestAsync()
         {
-            //stop the execution of next middlewares since redirect is required.
             if (_redirectionStatus == RedirectionStatus.ShouldRedirect)
             {
+                // Stops the execution of next middlewares since redirect to SharePoint is required.
                 return await Task.FromResult(true);
             }
             return await base.HandleRequestAsync();
