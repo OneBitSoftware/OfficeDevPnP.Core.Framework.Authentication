@@ -19,6 +19,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         {
             Uri redirectUrl;
             var defaultScheme = SharePointAuthenticationDefaults.AuthenticationScheme;
+            var cookieScheme = new SharePointContextCookieOptions().ApplicationCookie.AuthenticationScheme;
             AuthenticateResult result = AuthenticateResult.Failed("Could not get the RedirectionStatus");
 
             // Sets up the SharePoint configuration based on the middleware options.
@@ -30,7 +31,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                     
                     // Checks if we already have authenticated principal.
                     ClaimsPrincipal principal;
-                    if (Context.User.Identities.Any(identity => identity.IsAuthenticated)) //TODO: IsAuthenticated is awlays false. To be decided wheather and how we presist the user (Context.User) state. We may not need to do it if we follow the SharePointContextProvider concept that handles context details in session.
+                    if (Context.User.Identities.Any(identity => identity.IsAuthenticated))
                     {
                         principal = Context.User;
                     }
@@ -51,14 +52,16 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
                         principal.AddIdentity(identity);
                         // Handles the sign in method of the auth middleware.
-                        await Context.Authentication.SignInAsync(defaultScheme, principal, new AuthenticationProperties()
-                        {
-                            ExpiresUtc = DateTimeOffset.UtcNow.AddDays(10),
-                            IsPersistent = false,
-                            AllowRefresh = false
-                        });
+                        
+                        await Context.Authentication.SignInAsync(cookieScheme, principal);
+                        //, new AuthenticationProperties()
+                        //  {
+                        //      ExpiresUtc = DateTimeOffset.UtcNow.AddDays(10),
+                        //      IsPersistent = false,
+                        //      AllowRefresh = false
+                        //  }
                     }
-                    var ticket = new AuthenticationTicket(principal, new AuthenticationProperties(), defaultScheme);
+                    var ticket = new AuthenticationTicket(principal, new AuthenticationProperties(), cookieScheme);
                     result = AuthenticateResult.Success(ticket);
                     break;
                 case RedirectionStatus.ShouldRedirect:

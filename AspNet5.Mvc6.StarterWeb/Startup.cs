@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using Microsoft.AspNet.Authentication.Cookies;
 using Microsoft.AspNet.Builder;
 using Microsoft.AspNet.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -26,7 +25,7 @@ namespace AspNet5.Mvc6.StarterWeb
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            //services.AddAuthentication();
+            services.AddAuthentication(options => new SharePointContextCookieOptions());
             services.AddCaching();
             services.AddSession(o =>
             {
@@ -61,11 +60,7 @@ namespace AspNet5.Mvc6.StarterWeb
             //app.UseIISPlatformHandler();
             app.UseStaticFiles();
 
-            app.UseCookieAuthentication(new CookieAuthenticationOptions
-            {
-                AutomaticAuthenticate = true,
-                AuthenticationScheme = SharePointAuthenticationDefaults.AuthenticationScheme,
-            });
+            app.UseCookieAuthentication(new SharePointContextCookieOptions().ApplicationCookie);
 
             //Add SharePoint authentication capabilities
             app.UseSharePointAuthentication(new SharePointAuthenticationOptions()

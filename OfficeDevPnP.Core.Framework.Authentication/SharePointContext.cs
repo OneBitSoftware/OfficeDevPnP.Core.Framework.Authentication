@@ -762,7 +762,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             {
                 Uri spHostUrl = SharePointContext.GetSPHostUrl(httpContext.Request);
                 string contextToken = TokenHandler.GetContextTokenFromRequest(httpContext.Request);
-                HttpCookie spCacheKeyCookie = new HttpCookie(string.Empty, httpContext.Request.Cookies[SPCacheKeyKey]);
+                HttpCookie spCacheKeyCookie = new HttpCookie(SPCacheKeyKey, httpContext.Request.Cookies[SPCacheKeyKey]);
                 string spCacheKey = spCacheKeyCookie != null ? spCacheKeyCookie.Value : null;
 
                 return spHostUrl == spAcsContext.SPHostUrl &&
