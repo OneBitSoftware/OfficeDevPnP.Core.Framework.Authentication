@@ -3,7 +3,7 @@ using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNet.Builder;
 using Microsoft.AspNet.Server.Kestrel.Https;
 
-namespace AspNet5.Mvc6.StarterWeb.App_Start
+namespace AspNet5.Mvc6.StarterWeb
 {
     public class WebServerConfig
     {

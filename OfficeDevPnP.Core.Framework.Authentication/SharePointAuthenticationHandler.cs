@@ -22,7 +22,6 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             switch (SharePointContextProvider.CheckRedirectionStatus(Context, out redirectUrl))
             {
                 case RedirectionStatus.Ok:
-                    
                     //check if we already have authenticated principal
                     ClaimsPrincipal principal;
                     if (Context.User.Identities.Any(identity => identity.IsAuthenticated)) //TODO: IsAuthenticated is awlays false. To be decided wheather and how we presist the user (Context.User) state. We may not need to do it if we follow the SharePointContextProvider concept that handles context details in session.
@@ -31,15 +30,27 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                     }
                     else
                     {
-                        //get instance of the SharePointAcsContextProvider in the SharePointContextProvider.Current property
-                        var spContext = SharePointContextProvider.Current.GetSharePointContext(Context);
+                        // the cookie authentication is listening for
+                        var identity = new ClaimsIdentity(defaultScheme);
 
-                        principal = new ClaimsPrincipal();
-                        GenericIdentity identity = new GenericIdentity(((SharePointAcsContext)spContext).CacheKey, defaultScheme); //TODO: would not work with HighTrust
+                        //Add empty claims to the Identity object
+                        var newClaims = new[]
+                        {
+                            new Claim(ClaimTypes.AuthenticationMethod, defaultScheme),
+                        };
+                        identity.AddClaims(newClaims);
+
+                        // create the authentication ticket
+                        principal = new ClaimsPrincipal(identity);
 
                         principal.AddIdentity(identity);
                         //handle the sign in method of the auth middleware
-                        await Context.Authentication.SignInAsync(defaultScheme, principal);
+                        await Context.Authentication.SignInAsync(defaultScheme, principal, new AuthenticationProperties()
+                        {
+                            ExpiresUtc = DateTimeOffset.UtcNow.AddDays(10),
+                            IsPersistent = false,
+                            AllowRefresh = false
+                        });
                     }
                     var ticket = new AuthenticationTicket(principal, new AuthenticationProperties(), defaultScheme);
                     result = AuthenticateResult.Success(ticket);
@@ -61,11 +72,6 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         {
             await base.HandleSignInAsync(context);
             SignInAccepted = true;
-        }
-
-        public override async Task<bool> HandleRequestAsync()
-        {
-            return await Task.FromResult(true);
         }
 
         protected override async Task<bool> HandleUnauthorizedAsync(ChallengeContext context)

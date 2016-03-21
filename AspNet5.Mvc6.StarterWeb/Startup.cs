@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using AspNet5.Mvc6.StarterWeb.App_Start;
 using Microsoft.AspNet.Builder;
 using Microsoft.AspNet.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -26,6 +25,7 @@ namespace AspNet5.Mvc6.StarterWeb
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            //services.AddAuthentication();
             services.AddCaching();
             services.AddSession(o =>
             {
