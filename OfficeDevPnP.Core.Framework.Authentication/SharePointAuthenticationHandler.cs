@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNet.Authentication;
 using System;
 using System.Security.Claims;
-using System.Security.Principal;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Http.Authentication;
 using Microsoft.AspNet.Http.Features.Authentication;
@@ -11,6 +10,11 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 {
     public class SharePointAuthenticationHandler : AuthenticationHandler<SharePointAuthenticationOptions>
     {
+        /// <summary>
+        /// RedirectionStatus would decide if we contunue to the next middleware in the pipe
+        /// </summary>
+        private RedirectionStatus _redirectionStatus;
+
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
             Uri redirectUrl;
@@ -22,6 +26,8 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             switch (SharePointContextProvider.CheckRedirectionStatus(Context, out redirectUrl))
             {
                 case RedirectionStatus.Ok:
+                    _redirectionStatus = RedirectionStatus.Ok;
+                    
                     //check if we already have authenticated principal
                     ClaimsPrincipal principal;
                     if (Context.User.Identities.Any(identity => identity.IsAuthenticated)) //TODO: IsAuthenticated is awlays false. To be decided wheather and how we presist the user (Context.User) state. We may not need to do it if we follow the SharePointContextProvider concept that handles context details in session.
@@ -56,11 +62,15 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                     result = AuthenticateResult.Success(ticket);
                     break;
                 case RedirectionStatus.ShouldRedirect:
+                    _redirectionStatus = RedirectionStatus.ShouldRedirect;
+
                     Response.StatusCode = 301;
                     result = AuthenticateResult.Failed("ShouldRedirect");
                     Context.Response.Redirect(redirectUrl.AbsoluteUri);
                     break;
                 case RedirectionStatus.CanNotRedirect:
+                    _redirectionStatus = RedirectionStatus.CanNotRedirect;
+
                     Response.StatusCode = 401;
                     result = AuthenticateResult.Failed("CanNotRedirect");
                     break;
@@ -78,6 +88,17 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         {
             return await base.HandleUnauthorizedAsync(context);
         }
+
+        public override async Task<bool> HandleRequestAsync()
+        {
+            //stop the execution of next middlewares since redirect is required.
+            if (_redirectionStatus == RedirectionStatus.ShouldRedirect)
+            {
+                return await Task.FromResult(true);
+            }
+            return await base.HandleRequestAsync();
+        }
+
 
         protected override async Task HandleSignOutAsync(SignOutContext context)
         {
