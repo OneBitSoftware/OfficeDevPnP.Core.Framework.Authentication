@@ -4,9 +4,12 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 {
     public class SharePointAuthenticationOptions : AuthenticationOptions
     {
-        public SharePointAuthenticationOptions() : base()
+        /// <summary>
+        /// Sets default options.
+        /// </summary>
+        public SharePointAuthenticationOptions()
         {
-            //Set automatic challenge to default
+            // Sets automatic challenge to default.
             AutomaticAuthenticate = true;
             AutomaticChallenge = true;
             AuthenticationScheme = SharePointAuthenticationDefaults.AuthenticationScheme;
@@ -17,14 +20,50 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// The default is true. This should be disabled only in development environments.
         /// </summary>
         public bool RequireHttpsMetadata { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets ClientId.
+        /// </summary>
         public string ClientId { get; set; }
+
+        /// <summary>
+        /// Gets or sets ClientSecret.
+        /// </summary>
         public string ClientSecret { get; set; }
+
+        /// <summary>
+        /// Gets or sets IssuerId.
+        /// </summary>
         public string IssuerId { get; set; }
+
+        /// <summary>
+        /// Gets or sets HostedAppHostNameOverride.
+        /// </summary>
         public string HostedAppHostNameOverride { get; set; }
+
+        /// <summary>
+        /// Gets or sets HostedAppHostName.
+        /// </summary>
         public string HostedAppHostName { get; set; }
+
+        /// <summary>
+        /// Gets or sets SecondaryClientSecret.
+        /// </summary>
         public string SecondaryClientSecret { get; set; }
+
+        /// <summary>
+        /// Gets or sets Realm.
+        /// </summary>
         public string Realm { get; set; }
+
+        /// <summary>
+        /// Gets or sets ClientSigningCertificatePath.
+        /// </summary>
         public string ClientSigningCertificatePath { get; set; }
+
+        /// <summary>
+        /// Gets or sets ClientSigningCertificatePassword.
+        /// </summary>
         public string ClientSigningCertificatePassword { get; set; }
     }
 }

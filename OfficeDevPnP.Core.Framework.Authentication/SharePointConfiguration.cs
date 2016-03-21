@@ -3,18 +3,62 @@ using Microsoft.Extensions.OptionsModel;
 
 namespace OfficeDevPnP.Core.Framework.Authentication
 {
+    /// <summary>
+    /// SharePointConfiguration has base set of configuration fields needed for authenticating against SharePoint.
+    /// It is used by the TokenHelper to send HTTP calls 
+    /// </summary>
     public class SharePointConfiguration
     {
+        /// <summary>
+        /// Gets or sets ClientId.
+        /// </summary>
         public string ClientId { get; set; }
+
+        /// <summary>
+        /// Gets or sets ClientSecret.
+        /// </summary>
         public string ClientSecret { get; set; }
+
+        /// <summary>
+        /// Gets or sets IssuerId.
+        /// </summary>
         public string IssuerId { get; set; }
+
+        /// <summary>
+        /// Gets or sets HostedAppHostNameOverride.
+        /// </summary>
         public string HostedAppHostNameOverride { get; set; }
+
+        /// <summary>
+        /// Gets or sets HostedAppHostName.
+        /// </summary>
         public string HostedAppHostName { get; set; }
+
+        /// <summary>
+        /// Gets or sets SecondaryClientSecret.
+        /// </summary>
         public string SecondaryClientSecret { get; set; }
+
+        /// <summary>
+        /// Gets or sets Realm.
+        /// </summary>
         public string Realm { get; set; }
+
+        /// <summary>
+        /// Gets or sets ClientSigningCertificatePath.
+        /// </summary>
         public string ClientSigningCertificatePath { get; set; }
+
+        /// <summary>
+        /// Gets or sets ClientSigningCertificatePassword.
+        /// </summary>
         public string ClientSigningCertificatePassword { get; set; }
 
+        /// <summary>
+        /// Creates new SharePointConfiguration from SharePointAuthenticationOptions.
+        /// </summary>
+        /// <param name="options"></param>
+        /// <returns></returns>
         public static SharePointConfiguration GetFromSharePointAuthenticationOptions(SharePointAuthenticationOptions options)
         {
             return new SharePointConfiguration()
@@ -31,6 +75,11 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             };
         }
 
+        /// <summary>
+        /// Creates new SharePointConfiguration from IOptions<SharePointConfiguration>.
+        /// </summary>
+        /// <param name="options"></param>
+        /// <returns></returns>
         public static SharePointConfiguration GetFromIOptions(IOptions<SharePointConfiguration> options)
         {
             return new SharePointConfiguration()
@@ -47,6 +96,11 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             };
         }
 
+        /// <summary>
+        /// Creates new SharePointConfiguration from IConfiguration.
+        /// </summary>
+        /// <param name="configuration"></param>
+        /// <returns></returns>
         public static SharePointConfiguration GetFromIConfiguration(IConfiguration configuration)
         {
             return new SharePointConfiguration()
