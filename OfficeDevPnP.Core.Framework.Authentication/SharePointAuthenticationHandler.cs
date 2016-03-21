@@ -41,17 +41,12 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                         //handle the sign in method of the auth middleware
                         await Context.Authentication.SignInAsync(defaultScheme, principal);
                     }
-
                     var ticket = new AuthenticationTicket(principal, new AuthenticationProperties(), defaultScheme);
                     result = AuthenticateResult.Success(ticket);
                     break;
                 case RedirectionStatus.ShouldRedirect:
-                    // 301 is the status code of permanent redirect
-                    //Context.Response.StatusCode = 301;
-                    //Context.Response.Headers["Location"] = redirectUrl.AbsoluteUri;
-                    Response.StatusCode = 401;
+                    Response.StatusCode = 301;
                     result = AuthenticateResult.Failed("ShouldRedirect");
-                    //await HandleRequestAsync();
                     Context.Response.Redirect(redirectUrl.AbsoluteUri);
                     break;
                 case RedirectionStatus.CanNotRedirect:
@@ -71,7 +66,6 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         public override async Task<bool> HandleRequestAsync()
         {
             return await Task.FromResult(true);
-            //option 1
         }
 
         protected override async Task<bool> HandleUnauthorizedAsync(ChallengeContext context)

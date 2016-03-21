@@ -368,7 +368,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             }
 
             redirectUrl = null;
-            bool contextTokenExpired = false; //contextTokenExpired = true; //todo:test redirect
+            bool contextTokenExpired = false;
 
             try
             {
@@ -402,7 +402,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             {
                 return RedirectionStatus.CanNotRedirect;
             }
-            var uri = httpContext.Request.GetDisplayUrl();
+            var uri = GetCurrentUrl(httpContext);
             Uri requestUrl = new Uri(uri); 
 
             var queryNameValueCollection = HttpUtility.ParseQueryString(requestUrl.Query);
@@ -431,6 +431,27 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             redirectUrl = new Uri(redirectUrlString, UriKind.Absolute);
 
             return RedirectionStatus.ShouldRedirect;
+        }
+
+        /// <summary>
+        /// Getting the correct url with the correct url scheme since httpContext.Request.GetDisplayUrl()
+        /// provides incorrect 'http' scheme even we are running on 'https'. It needs to be double checked until
+        /// better solution has been found.
+        /// </summary>
+        /// <param name="httpContext"></param>
+        /// <returns></returns>
+        private static string GetCurrentUrl(HttpContext httpContext)
+        {
+            var url = httpContext.Request.GetDisplayUrl();
+            //compare request sheme
+            var serverScheme = ((Microsoft.AspNet.Server.Kestrel.Http.ListenerContext)
+                ((Microsoft.AspNet.Http.Internal.DefaultHttpContext)httpContext).Features).ServerAddress.Scheme;
+
+            if (httpContext.Request.Scheme != serverScheme)
+            {
+                url = url.Replace(httpContext.Request.Scheme, serverScheme);
+            }
+            return url;
         }
 
         /// <summary>
