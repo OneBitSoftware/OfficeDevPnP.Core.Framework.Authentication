@@ -17,10 +17,17 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
+            AuthenticateResult result = AuthenticateResult.Failed("Could not get the authenticate");
+
             Uri redirectUrl;
             var defaultScheme = SharePointAuthenticationDefaults.AuthenticationScheme;
             var cookieScheme = new SharePointContextCookieOptions().ApplicationCookie.AuthenticationScheme;
-            AuthenticateResult result = AuthenticateResult.Failed("Could not get the RedirectionStatus");
+            var authenticationProperties = new AuthenticationProperties()
+            {
+                //ExpiresUtc = DateTimeOffset.UtcNow.AddDays(10),
+                IsPersistent = false,
+                AllowRefresh = false
+            };
 
             // Sets up the SharePoint configuration based on the middleware options.
             SharePointContextProvider.GetInstance(SharePointConfiguration.GetFromSharePointAuthenticationOptions(Options));
@@ -46,22 +53,17 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                             new Claim(ClaimTypes.AuthenticationMethod, defaultScheme),
                         };
                         identity.AddClaims(newClaims);
-
-                        // Creates the authentication ticket.
-                        principal = new ClaimsPrincipal(identity);
-
-                        principal.AddIdentity(identity);
-                        // Handles the sign in method of the auth middleware.
                         
-                        await Context.Authentication.SignInAsync(cookieScheme, principal);
-                        //, new AuthenticationProperties()
-                        //  {
-                        //      ExpiresUtc = DateTimeOffset.UtcNow.AddDays(10),
-                        //      IsPersistent = false,
-                        //      AllowRefresh = false
-                        //  }
+                        principal = new ClaimsPrincipal(identity);
+                        principal.AddIdentity(identity);
+
+                        // Handles the sign in method of the auth middleware.
+                        await Context.Authentication.SignInAsync(cookieScheme, principal, authenticationProperties);
+                        
                     }
-                    var ticket = new AuthenticationTicket(principal, new AuthenticationProperties(), cookieScheme);
+
+                    // Creates the authentication ticket.
+                    var ticket = new AuthenticationTicket(principal, authenticationProperties, cookieScheme);
                     result = AuthenticateResult.Success(ticket);
                     break;
                 case RedirectionStatus.ShouldRedirect:

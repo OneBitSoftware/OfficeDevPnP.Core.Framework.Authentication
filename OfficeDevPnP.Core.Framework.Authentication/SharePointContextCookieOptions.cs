@@ -22,7 +22,8 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             {
                 AuthenticationScheme = ApplicationCookieAuthenticationScheme,
                 AutomaticAuthenticate = true,
-                AutomaticChallenge = true
+                AutomaticChallenge = true,
+                //ExpireTimeSpan = TimeSpan.FromDays(14)
             };
         }
 
