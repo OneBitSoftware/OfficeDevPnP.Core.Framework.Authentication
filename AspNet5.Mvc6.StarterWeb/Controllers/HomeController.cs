@@ -8,7 +8,6 @@ namespace AspNet5.Mvc6.StarterWeb.Controllers
     {
         public IActionResult Index()
         {
-            var auth = this.HttpContext.User.Identity.IsAuthenticated;
             User spUser = null;
             var spContext = SharePointContextProvider.Current.GetSharePointContext(HttpContext);
             using (var clientContext = spContext.CreateUserClientContextForSPHost())
@@ -29,7 +28,6 @@ namespace AspNet5.Mvc6.StarterWeb.Controllers
 
         public IActionResult About()
         {
-            var auth = this.HttpContext.User.Identity.IsAuthenticated;
             ViewData["Message"] = "Your application description page.";
             return View();
         }
@@ -37,7 +35,6 @@ namespace AspNet5.Mvc6.StarterWeb.Controllers
         public IActionResult Contact()
         {
             ViewData["Message"] = "Your contact page.";
-
             return View();
         }
 
