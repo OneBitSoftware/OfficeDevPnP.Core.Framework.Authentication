@@ -17,20 +17,23 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
-            AuthenticateResult result = AuthenticateResult.Failed("Could not get the authenticate");
-
             Uri redirectUrl;
             var defaultScheme = SharePointAuthenticationDefaults.AuthenticationScheme;
             var cookieScheme = new SharePointContextCookieOptions().ApplicationCookie.AuthenticationScheme;
+
+            //Set the default error message when no SP Auth is attempted
+            AuthenticateResult result = AuthenticateResult.Failed("Could not handle SharePoint authentication.");
+
             var authenticationProperties = new AuthenticationProperties()
             {
-                //ExpiresUtc = DateTimeOffset.UtcNow.AddDays(10),
+                ExpiresUtc = DateTimeOffset.UtcNow.AddDays(10),
                 IsPersistent = false,
                 AllowRefresh = false
             };
 
             // Sets up the SharePoint configuration based on the middleware options.
             SharePointContextProvider.GetInstance(SharePointConfiguration.GetFromSharePointAuthenticationOptions(Options));
+
             switch (SharePointContextProvider.CheckRedirectionStatus(Context, out redirectUrl))
             {
                 case RedirectionStatus.Ok:
@@ -41,7 +44,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
                     // Gets the SharePoint context CacheKey. The CacheKey would be assigned as issuer for new claim.
                     // It is also used to validate identity that is authenticated.
-                    //TODO: would not work with HighTrust
+                    //TODO: would not work with HighTrust at the moment
                     var claimIssuer = ((SharePointAcsContext)spContext).CacheKey; 
 
                     // Checks if we already have authenticated principal.

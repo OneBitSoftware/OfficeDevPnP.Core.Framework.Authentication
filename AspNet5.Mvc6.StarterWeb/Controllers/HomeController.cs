@@ -8,13 +8,15 @@ namespace AspNet5.Mvc6.StarterWeb.Controllers
     {
         public IActionResult Index()
         {
-            User spUser = null;
+            //get a SharePoint context
             var spContext = SharePointContextProvider.Current.GetSharePointContext(HttpContext);
+
+            //build a client context to work with data
             using (var clientContext = spContext.CreateUserClientContextForSPHost())
             {
                 if (clientContext != null)
                 {
-                    spUser = clientContext.Web.CurrentUser;
+                    User spUser = clientContext.Web.CurrentUser;
 
                     clientContext.Load(spUser, user => user.Title);
 
@@ -23,6 +25,7 @@ namespace AspNet5.Mvc6.StarterWeb.Controllers
                     ViewBag.UserName = spUser.Title;
                 }
             }
+
             return View();
         }
 

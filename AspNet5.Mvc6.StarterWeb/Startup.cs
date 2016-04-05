@@ -25,7 +25,6 @@ namespace AspNet5.Mvc6.StarterWeb
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            //services.AddAuthentication(options => new SharePointContextCookieOptions());
             services.AddCaching();
             services.AddSession(o =>
             {
@@ -39,6 +38,7 @@ namespace AspNet5.Mvc6.StarterWeb
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
         {
+            //required to store SP Cache Key session data
             app.UseSession();
 
             loggerFactory.AddConsole(Configuration.GetSection("Logging"));
@@ -54,23 +54,26 @@ namespace AspNet5.Mvc6.StarterWeb
                 app.UseExceptionHandler("/Home/Error");
             }
 
-            //ConfiguerSSL
+            //Configuer SSL, only needed due to Kestrel
+            //TODO: inject through IOptions and appconfig.json
+            // Should Not be a concern of the application
             WebServerConfig.ConfigureSSL(app, Path.Combine(env.WebRootPath, @"../../cert/office365flask.pfx"), "pass@word1");
 
-            //app.UseIISPlatformHandler();
             app.UseStaticFiles();
 
+            //Required to do client session management, but uses the schema of our middleware
             app.UseCookieAuthentication(new SharePointContextCookieOptions().ApplicationCookie);
 
             //Add SharePoint authentication capabilities
             app.UseSharePointAuthentication(new SharePointAuthenticationOptions()
-                    {
-                        RequireHttpsMetadata = true,
-                        ClientId = Configuration["SharePointAuthentication:ClientId"],
-                        ClientSecret = Configuration["SharePointAuthentication:ClientSecret"]
-                    }
-                );
+                {
+                    RequireHttpsMetadata = true,
+                    ClientId = Configuration["SharePointAuthentication:ClientId"],
+                    ClientSecret = Configuration["SharePointAuthentication:ClientSecret"]
+                }
+            );
 
+            //set up MVC routes
             app.UseMvc(routes =>
             {
                 routes.MapRoute(

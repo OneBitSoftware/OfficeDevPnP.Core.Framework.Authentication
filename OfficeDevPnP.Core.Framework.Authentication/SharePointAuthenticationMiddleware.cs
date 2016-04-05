@@ -12,7 +12,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
     public class SharePointAuthenticationMiddleware :
         AuthenticationMiddleware<SharePointAuthenticationOptions>
     {
-        private readonly RequestDelegate _next;
+        private readonly RequestDelegate _nextMiddleware;
 
         /// <summary>
         /// Initializes a new <see cref="SharePointAuthenticationMiddleware"/>.
@@ -22,15 +22,15 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <param name="encoder"></param>
         /// <param name="options">Configuration options for the middleware.</param>
         public SharePointAuthenticationMiddleware(
-            RequestDelegate next,
+            RequestDelegate nextMiddleware,
             ILoggerFactory loggerFactory,
             IUrlEncoder encoder,
             SharePointAuthenticationOptions options)
-            : base(next, options, loggerFactory, encoder)
+            : base(nextMiddleware, options, loggerFactory, encoder)
         {
-            if (next == null)
+            if (nextMiddleware == null)
             {
-                throw new ArgumentNullException(nameof(next));
+                throw new ArgumentNullException(nameof(nextMiddleware));
             }
 
             if (loggerFactory == null)
@@ -48,8 +48,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 throw new ArgumentNullException(nameof(options));
             }
 
-
-            _next = next;
+            _nextMiddleware = nextMiddleware;
         }
 
         /// <summary>
