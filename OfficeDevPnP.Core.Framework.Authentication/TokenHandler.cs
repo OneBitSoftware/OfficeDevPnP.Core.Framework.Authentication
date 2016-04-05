@@ -70,7 +70,6 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             {
                 //RC1 produces exception on get request ((Microsoft.AspNet.Http.Internal.DefaultHttpRequest)request).Form
                 //where the Form should be {}
-                //not sure it is a framework, but or somethin in our code is wrong.
                 //https://github.com/aspnet/Mvc/issues/2749
                 //TODO: review later
             }
@@ -647,11 +646,11 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         // Injected app IConfiguration
         //
 
-        private readonly string _clientId; //"712afcfc-ee2e-4404-b61f-8732f158d695"
+        private readonly string _clientId; 
         private readonly string _issuerId;
         private readonly string _hostedAppHostNameOverride;
         private readonly string _hostedAppHostName;
-        private readonly string _clientSecret; //"1+Ucvqkh7rgshiq/SoY+S7tPxTWWiSKYCp1Einvcs2c="
+        private readonly string _clientSecret; 
         private readonly string _secondaryClientSecret;
         private readonly string _realm;
         private readonly string _serviceNamespace;
@@ -863,38 +862,6 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         // methods to parse the MetaData document and get endpoints and STS certificate.
         public class AcsMetadataParser
         {
-            //TODO: Uncomment for high trust
-            //public static X509Certificate2 GetAcsSigningCert(string acsMetadataEndpointUrlWithRealm)
-            //{
-            //    JsonMetadataDocument document = GetMetadataDocument(acsMetadataEndpointUrlWithRealm);
-
-            //    if (null != document.keys && document.keys.Count > 0)
-            //    {
-            //        JsonKey signingKey = document.keys[0];
-
-            //        if (null != signingKey && null != signingKey.keyValue)
-            //        {
-            //            return new X509Certificate2(Encoding.UTF8.GetBytes(signingKey.keyValue.value));
-            //        }
-            //    }
-
-            //    throw new Exception("Metadata document does not contain ACS signing certificate.");
-            //}
-
-            //TODO: Uncomment for high trust
-            //public static string GetDelegationServiceUrl(string acsMetadataEndpointUrlWithRealm)
-            //{
-            //    JsonMetadataDocument document = GetMetadataDocument(acsMetadataEndpointUrlWithRealm);
-
-            //    JsonEndpoint delegationEndpoint = document.endpoints.SingleOrDefault(e => e.protocol == DelegationIssuance);
-
-            //    if (null != delegationEndpoint)
-            //    {
-            //        return delegationEndpoint.location;
-            //    }
-            //    throw new Exception("Metadata document does not contain Delegation Service endpoint Url");
-            //}
-
             private static JsonMetadataDocument GetMetadataDocument(string acsMetadataEndpointUrlWithRealm)
             {
                 byte[] acsMetadata;

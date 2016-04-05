@@ -1,7 +1,7 @@
-﻿using Microsoft.AspNet.Authentication.Cookies;
-
-namespace OfficeDevPnP.Core.Framework.Authentication
+﻿namespace OfficeDevPnP.Core.Framework.Authentication
 {
+    using Microsoft.AspNet.Authentication.Cookies;
+
     public class SharePointContextCookieOptions
     {
         /// <summary>
@@ -23,7 +23,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 AuthenticationScheme = ApplicationCookieAuthenticationScheme,
                 AutomaticAuthenticate = true,
                 AutomaticChallenge = true,
-                //ExpireTimeSpan = TimeSpan.FromDays(14)
+                ExpireTimeSpan = System.TimeSpan.FromDays(14)
             };
         }
 
