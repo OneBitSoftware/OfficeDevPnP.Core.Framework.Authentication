@@ -1,21 +1,16 @@
 ﻿using System;
-using System.Linq;
 using System.Net;
-using System.Runtime.CompilerServices;
 using System.Web;
 using Microsoft.AspNet.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.OptionsModel;
-using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.S2S.Protocols.OAuth2;
-using Microsoft.IdentityModel.S2S.Tokens;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.SharePoint.Client;
 using Newtonsoft.Json;
 using HttpContext = Microsoft.AspNet.Http.HttpContext;
 using HttpRequest = Microsoft.AspNet.Http.HttpRequest;
 using Microsoft.AspNet.Http.Extensions;
-
 
 namespace OfficeDevPnP.Core.Framework.Authentication
 {
@@ -287,24 +282,6 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <summary>
         /// Initializes the default SharePointContextProvider instance.
         /// </summary>
-        //protected SharePointContextProvider() //TODO: delete and use getInstance() instead since we neet to parse SharePointConfiguration, but this it cannot be done in static constructor
-        //{
-        //    _tokenHandler = new TokenHandler(_configuration);
-        //    if (!_tokenHandler.IsHighTrustApp())
-        //    {
-        //        _current = new SharePointAcsContextProvider();
-        //    }
-        //    else
-        //    {
-        //        throw new NotImplementedException();
-        //        //current = new SharePointHighTrustContextProvider(); 
-        //    }
-        //    //return this;
-        //}
-
-        /// <summary>
-        /// Initializes the default SharePointContextProvider instance.
-        /// </summary>
         public static SharePointContextProvider GetInstance(SharePointConfiguration configuration)
         {
             _tokenHandler = new TokenHandler(configuration);
@@ -315,8 +292,8 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             }
             else
             {
-                throw new NotImplementedException();
-                //current = new SharePointHighTrustContextProvider(); //TODO: fix
+                throw new NotImplementedException("Hight Trust is still not supported by this library.");
+                //current = new SharePointHighTrustContextProvider();
             }
             return _current;
         }

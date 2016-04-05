@@ -122,6 +122,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         {
             await Context.Authentication.SignOutAsync(SharePointAuthenticationDefaults.AuthenticationScheme);
             await base.HandleSignOutAsync(context);
+            SignOutAccepted = true;
         }
     }
 }

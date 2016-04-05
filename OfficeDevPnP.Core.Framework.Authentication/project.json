@@ -1,7 +1,7 @@
 {
   "version": "1.0.0-*",
   "description": "OfficeDevPnP.Core.Framework.Authentication Class Library",
-  "authors": [ "Radi" ],
+  "authors": [ "Radi Atanassov, Velin Georgiev, OneBit Software" ],
   "tags": [ "" ],
   "projectUrl": "",
   "licenseUrl": "",
@@ -28,6 +28,6 @@
         "System.Web": "4.0.0.0"
       }
     },
-    }
+  }
   }
 
