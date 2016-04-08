@@ -735,6 +735,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         {
             SharePointAcsContext spAcsContext = spContext as SharePointAcsContext;
 
+            //Checks for the SPCacheKey cookie and gets the value
             if (spAcsContext != null)
             {
                 Uri spHostUrl = SharePointContext.GetSPHostUrl(httpContext.Request);
@@ -773,6 +774,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         {
             SharePointAcsContext spAcsContext = spContext as SharePointAcsContext;
 
+            //creates a cookie to store the SPCacheKey
             if (spAcsContext != null)
             {
                 var options = new CookieOptions() { HttpOnly = true, Secure = true };

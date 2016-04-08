@@ -62,7 +62,7 @@ namespace AspNet5.Mvc6.StarterWeb
             app.UseStaticFiles();
 
             //Required to do client session management, but uses the schema of our middleware
-            app.UseCookieAuthentication(new SharePointContextCookieOptions().ApplicationCookie);
+            app.UseCookieAuthentication(new SharePointAuthenticationCookieOptions().ApplicationCookie);
 
             //Add SharePoint authentication capabilities
             app.UseSharePointAuthentication(new SharePointAuthenticationOptions()

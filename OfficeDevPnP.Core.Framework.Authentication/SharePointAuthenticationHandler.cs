@@ -18,8 +18,6 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
             Uri redirectUrl;
-            var defaultScheme = SharePointAuthenticationDefaults.AuthenticationScheme;
-            var cookieScheme = new SharePointContextCookieOptions().ApplicationCookie.AuthenticationScheme;
 
             //Set the default error message when no SP Auth is attempted
             AuthenticateResult result = AuthenticateResult.Failed("Could not handle SharePoint authentication.");
@@ -32,7 +30,8 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             };
 
             // Sets up the SharePoint configuration based on the middleware options.
-            SharePointContextProvider.GetInstance(SharePointConfiguration.GetFromSharePointAuthenticationOptions(Options));
+            var spContextProvider = SharePointContextProvider.GetInstance(
+                SharePointConfiguration.GetFromSharePointAuthenticationOptions(Options));
 
             switch (SharePointContextProvider.CheckRedirectionStatus(Context, out redirectUrl))
             {
@@ -45,34 +44,42 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                     // Gets the SharePoint context CacheKey. The CacheKey would be assigned as issuer for new claim.
                     // It is also used to validate identity that is authenticated.
                     //TODO: would not work with HighTrust at the moment
-                    var claimIssuer = ((SharePointAcsContext)spContext).CacheKey; 
+                    var userCacheKey = ((SharePointAcsContext)spContext).CacheKey; 
 
-                    // Checks if we already have authenticated principal.
+                    // Checks if we already have an authenticated principal
                     ClaimsPrincipal principal;
-                    if (Context.User.Identities.Any(identity => identity.IsAuthenticated && identity.HasClaim(x => x.Issuer == claimIssuer)))
+                    if (Context.User.Identities.Any(identity => 
+                        identity.IsAuthenticated && identity.HasClaim(x => x.Issuer == GetType().Assembly.FullName)))
                     {
                         principal = Context.User;
                     }
                     else
                     {
-                        // The cookie authentication is listening for.
-                        var identity = new ClaimsIdentity(defaultScheme);
+                        //build a claims identity and principal
+                        var identity = new ClaimsIdentity(this.Options.AuthenticationScheme);
 
                         // Adds claims with the SharePoint context CacheKey as issuer to the Identity object.
                         var claims = new[]
                         {
-                            new Claim(ClaimTypes.AuthenticationMethod, defaultScheme, null, claimIssuer),
+                            new Claim(ClaimTypes.Authentication, userCacheKey, "SPCacheKey",  GetType().Assembly.FullName),
                         };
+
                         identity.AddClaims(claims);
+
                         principal = new ClaimsPrincipal(identity);
 
                         // Handles the sign in method of the auth middleware.
-                        await Context.Authentication.SignInAsync(cookieScheme, principal, authenticationProperties);  
+                        await Context.Authentication.SignInAsync
+                            (this.Options.AuthenticationScheme, principal, authenticationProperties);  
                     }
 
                     // Creates the authentication ticket.
-                    var ticket = new AuthenticationTicket(principal, authenticationProperties, cookieScheme);
+                    var ticket = new AuthenticationTicket(principal, authenticationProperties, this.Options.AuthenticationScheme);
                     result = AuthenticateResult.Success(ticket);
+
+                    //Log success
+                    LoggingExtensions.TokenValidationSucceeded(this.Logger);
+
                     break;
                 case RedirectionStatus.ShouldRedirect:
                     _redirectionStatus = RedirectionStatus.ShouldRedirect;
@@ -81,7 +88,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                     result = AuthenticateResult.Failed("ShouldRedirect");
 
                     // Signs out so new signin to be performed on redirect back from SharePoint
-                    await Context.Authentication.SignOutAsync(cookieScheme);
+                    await Context.Authentication.SignOutAsync(this.Options.AuthenticationScheme);
 
                     // Redirect to get new context token
                     Context.Response.Redirect(redirectUrl.AbsoluteUri);
@@ -91,6 +98,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
                     Response.StatusCode = 401;
                     result = AuthenticateResult.Failed("CanNotRedirect");
+                    LoggingExtensions.CannotRedirect(this.Logger);
                     break;
             }
             return result;
