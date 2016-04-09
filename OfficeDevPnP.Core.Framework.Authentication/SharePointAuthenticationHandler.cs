@@ -68,14 +68,30 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
                         principal = new ClaimsPrincipal(identity);
 
-                        // Handles the sign in method of the auth middleware.
+                        // Handles the sign in method of the SP auth middleware
                         await Context.Authentication.SignInAsync
-                            (this.Options.AuthenticationScheme, principal, authenticationProperties);  
+                            (this.Options.AuthenticationScheme, principal, authenticationProperties);
+
+                        //sign in the cookie middleware so it issues a cookie
+                        if (!string.IsNullOrWhiteSpace(this.Options.CookieAuthenticationScheme))
+                        {
+                            await Context.Authentication.SignInAsync
+                                  (this.Options.CookieAuthenticationScheme, principal, authenticationProperties); 
+                        }
+
+
                     }
 
                     // Creates the authentication ticket.
                     var ticket = new AuthenticationTicket(principal, authenticationProperties, this.Options.AuthenticationScheme);
                     result = AuthenticateResult.Success(ticket);
+
+                    //Throw auth ticket success event
+                    await Options.Events.AuthenticationSucceeded(
+                        new Events.AuthenticationSucceededContext(Context, Options)
+                    {
+                        AuthenticationTicket = ticket //pass the ticket 
+                    });
 
                     //Log success
                     LoggingExtensions.TokenValidationSucceeded(this.Logger);
@@ -103,18 +119,18 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             }
             return result;
         }
-        
+         
         protected override async Task HandleSignInAsync(SignInContext context)
-        {
-            await base.HandleSignInAsync(context);
-            SignInAccepted = true;
-        }
+        { 
+            //no need to call base as it doesn't do anything
+            //await base.HandleSignInAsync(context); 
 
-        protected override async Task<bool> HandleUnauthorizedAsync(ChallengeContext context)
-        {
-            return await base.HandleUnauthorizedAsync(context);
-        }
 
+
+
+            SignInAccepted = true; 
+        } 
+        
         public override async Task<bool> HandleRequestAsync()
         {
             if (_redirectionStatus == RedirectionStatus.ShouldRedirect)
@@ -128,7 +144,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
         protected override async Task HandleSignOutAsync(SignOutContext context)
         {
-            await Context.Authentication.SignOutAsync(SharePointAuthenticationDefaults.AuthenticationScheme);
+            await Context.Authentication.SignOutAsync(this.Options.AuthenticationScheme);
             await base.HandleSignOutAsync(context);
             SignOutAccepted = true;
         }

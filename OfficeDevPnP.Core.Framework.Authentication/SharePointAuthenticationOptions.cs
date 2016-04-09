@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNet.Authentication;
+using Microsoft.AspNet.Authentication.Cookies;
+using OfficeDevPnP.Core.Framework.Authentication.Events;
 
 namespace OfficeDevPnP.Core.Framework.Authentication
 {
@@ -12,7 +14,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             // Sets automatic challenge to default.
             AutomaticAuthenticate = true;
             AutomaticChallenge = true;
-            AuthenticationScheme = SharePointAuthenticationDefaults.AuthenticationScheme;
+            AuthenticationScheme = GetType().Assembly.FullName;
         }
 
         /// <summary>
@@ -65,5 +67,18 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// Gets or sets ClientSigningCertificatePassword.
         /// </summary>
         public string ClientSigningCertificatePassword { get; set; }
+
+        /// <summary>
+        /// If set, the SP Authentication middleware will also call the SignIn method for the provided 
+        /// Cookie authentication scheme
+        /// </summary>
+        public string CookieAuthenticationScheme { get; set; } = CookieAuthenticationDefaults.AuthenticationScheme;
+
+        /// <summary>  
+        /// The object provided by the application to process events raised by the SharePoint authentication middleware.  
+        /// The application may implement the interface fully, or it may create an instance of AuthenticationEvents  
+        /// and assign delegates only to the events it wants to process.  
+        /// </summary>  
+        public ISharePointAuthenticationEvents Events { get; set; } = new SharePointAuthenticationEvents();
     }
 }

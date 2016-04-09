@@ -6,7 +6,7 @@
   </PropertyGroup>
   <Import Project="$(VSToolsPath)\DNX\Microsoft.DNX.Props" Condition="'$(VSToolsPath)' != ''" />
   <PropertyGroup Label="Globals">
-    <ProjectGuid>008e649e-bbdc-4ee0-ad57-ca6415a9de8b</ProjectGuid>
+    <ProjectGuid>d0c6caa9-469e-4a26-afea-f95d70ffddf6</ProjectGuid>
     <RootNamespace>OfficeDevPnP.Core.Framework.Authentication</RootNamespace>
     <BaseIntermediateOutputPath Condition="'$(BaseIntermediateOutputPath)'=='' ">..\artifacts\obj\$(MSBuildProjectName)</BaseIntermediateOutputPath>
     <OutputPath Condition="'$(OutputPath)'=='' ">..\artifacts\bin\$(MSBuildProjectName)\</OutputPath>

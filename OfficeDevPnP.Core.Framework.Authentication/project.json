@@ -9,13 +9,13 @@
   "releaseNotes": "We've referenced rc1-update1 from https://www.myget.org/F/aspnetcirelease",
 
   "dependencies": {
-    "Microsoft.AspNet.Authentication": "1.0.0-rc1-update1",
+    "Microsoft.AspNet.Authentication": "1.0.0-rc1-final",
     "Microsoft.SharePointOnline.CSOM": "16.1.4727.1200",
-    "Microsoft.AspNet.Authentication.OAuth": "1.0.0-rc1-update1",
+    "Microsoft.AspNet.Authentication.OAuth": "1.0.0-rc1-final",
     "Microsoft.IdentityModel": "6.1.7600.16394",
-    "Microsoft.AspNet.Http.Extensions": "1.0.0-rc1-update1",
-    "Microsoft.AspNet.Server.Kestrel.Https": "1.0.0-rc1-update1",
-    "Microsoft.AspNet.Authentication.Cookies": "1.0.0-rc1-update1"
+    "Microsoft.AspNet.Http.Extensions": "1.0.0-rc1-final",
+    "Microsoft.AspNet.Server.Kestrel.Https": "1.0.0-rc1-final",
+    "Microsoft.AspNet.Authentication.Cookies": "1.0.0-rc1-final"
   },
 
   "frameworks": {
