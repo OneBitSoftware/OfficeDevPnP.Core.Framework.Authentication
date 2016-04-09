@@ -90,7 +90,8 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                     await Options.Events.AuthenticationSucceeded(
                         new Events.AuthenticationSucceededContext(Context, Options)
                     {
-                        AuthenticationTicket = ticket //pass the ticket 
+                        AuthenticationTicket = ticket, //pass the ticket 
+                        SharePointContext = spContext //append the sp context
                     });
 
                     //Log success
@@ -114,6 +115,11 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
                     Response.StatusCode = 401;
                     result = AuthenticateResult.Failed("CanNotRedirect");
+
+                    //Throw failed event
+                    await Options.Events.AuthenticationFailed(new Events.AuthenticationFailedContext(Context, Options));
+
+                    //Log that we cannot redirect
                     LoggingExtensions.CannotRedirect(this.Logger);
                     break;
             }
@@ -123,11 +129,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         protected override async Task HandleSignInAsync(SignInContext context)
         { 
             //no need to call base as it doesn't do anything
-            //await base.HandleSignInAsync(context); 
-
-
-
-
+            await base.HandleSignInAsync(context); 
             SignInAccepted = true; 
         } 
         

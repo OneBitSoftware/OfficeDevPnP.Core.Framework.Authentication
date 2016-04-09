@@ -8,5 +8,7 @@
                : base(context, options)
         {
         }
+
+        public SharePointContext SharePointContext { get; set; }
     }
 }

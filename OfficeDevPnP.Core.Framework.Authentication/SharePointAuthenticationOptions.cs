@@ -72,7 +72,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// If set, the SP Authentication middleware will also call the SignIn method for the provided 
         /// Cookie authentication scheme
         /// </summary>
-        public string CookieAuthenticationScheme { get; set; } = CookieAuthenticationDefaults.AuthenticationScheme;
+        public string CookieAuthenticationScheme { get; set; }
 
         /// <summary>  
         /// The object provided by the application to process events raised by the SharePoint authentication middleware.  
