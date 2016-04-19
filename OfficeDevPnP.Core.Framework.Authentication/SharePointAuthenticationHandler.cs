@@ -147,7 +147,6 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         protected override async Task HandleSignOutAsync(SignOutContext context)
         {
             await Context.Authentication.SignOutAsync(this.Options.AuthenticationScheme);
-            await base.HandleSignOutAsync(context);
             SignOutAccepted = true;
         }
     }
