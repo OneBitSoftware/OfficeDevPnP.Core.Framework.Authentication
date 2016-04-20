@@ -49,7 +49,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                     // Checks if we already have an authenticated principal
                     ClaimsPrincipal principal;
                     if (Context.User.Identities.Any(identity => 
-                        identity.IsAuthenticated && identity.HasClaim(x => x.Issuer == GetType().Assembly.FullName)))
+                        identity.IsAuthenticated && identity.HasClaim(x => x.Issuer == GetType().Assembly.GetName().Name)))
                     {
                         principal = Context.User;
                     }
@@ -61,7 +61,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                         // Adds claims with the SharePoint context CacheKey as issuer to the Identity object.
                         var claims = new[]
                         {
-                            new Claim(ClaimTypes.Authentication, userCacheKey, "SPCacheKey",  GetType().Assembly.FullName),
+                            new Claim(ClaimTypes.Authentication, userCacheKey, "SPCacheKey",  GetType().Assembly.GetName().Name),
                         };
 
                         identity.AddClaims(claims);
@@ -75,6 +75,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                         //sign in the cookie middleware so it issues a cookie
                         if (!string.IsNullOrWhiteSpace(this.Options.CookieAuthenticationScheme))
                         {
+                            SignInAccepted = true; 
                             await Context.Authentication.SignInAsync
                                   (this.Options.CookieAuthenticationScheme, principal, authenticationProperties); 
                         }
@@ -146,7 +147,11 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
         protected override async Task HandleSignOutAsync(SignOutContext context)
         {
-            await Context.Authentication.SignOutAsync(this.Options.AuthenticationScheme);
+            if (!string.IsNullOrWhiteSpace(this.Options.CookieAuthenticationScheme))
+            {
+                await Context.Authentication.SignOutAsync(this.Options.CookieAuthenticationScheme);
+                await base.HandleSignOutAsync(context);
+            }
             SignOutAccepted = true;
         }
     }
