@@ -196,16 +196,6 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         }
 
         /// <summary>
-        /// Gets the database connection string from SharePoint for autohosted app.
-        /// This method is deprecated because the autohosted option is no longer available.
-        /// </summary>
-        [Obsolete("This method is deprecated because the autohosted option is no longer available.", true)]
-        public string GetDatabaseConnectionString()
-        {
-            throw new NotSupportedException("This method is deprecated because the autohosted option is no longer available.");
-        }
-
-        /// <summary>
         /// Determines if the specified access token is valid.
         /// It considers an access token as not valid if it is null, or it has expired.
         /// </summary>
@@ -437,18 +427,15 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         {
             if (httpRequest == null) { throw new ArgumentNullException(nameof(httpRequest)); }
 
+            //TODO: null checks are not really needed here as the SharePointContext constructor handles its validation
+
             // SPHostUrl
             Uri spHostUrl = SharePointContext.GetUriFromQueryStringParameter(httpRequest, SharePointContext.SPHostUrlKey);
             if (spHostUrl == null) { throw new ArgumentException("The SPHostUrl query string parameter is null, empty or invalid."); }
 
             // SPAppWebUrl
-            string spAppWebUrlString = TokenHandler.EnsureTrailingSlash(httpRequest.Query[SharePointContext.SPAppWebUrlKey]);
-            Uri spAppWebUrl;
-            if (!Uri.TryCreate(spAppWebUrlString, UriKind.Absolute, out spAppWebUrl) ||
-                !(spAppWebUrl.Scheme == Uri.UriSchemeHttp || spAppWebUrl.Scheme == Uri.UriSchemeHttps))
-            {
-                spAppWebUrl = null;
-            }
+            Uri spAppWebUrl = SharePointContext.GetUriFromQueryStringParameter(httpRequest, SharePointContext.SPAppWebUrlKey);
+            if (spAppWebUrl == null) { throw new ArgumentException("The SPAppWebUrl query string parameter is null, empty or invalid."); }
 
             // SPLanguage
             string spLanguage = httpRequest.Query[SharePointContext.SPLanguageKey];
