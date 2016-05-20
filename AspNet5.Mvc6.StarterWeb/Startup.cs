@@ -6,6 +6,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OfficeDevPnP.Core.Framework.Authentication;
+using Microsoft.AspNet.Authentication.Cookies;
+using OfficeDevPnP.Core.Framework.Authentication.Events;
+using System.Threading.Tasks;
 
 namespace AspNet5.Mvc6.StarterWeb
 {
@@ -38,9 +41,7 @@ namespace AspNet5.Mvc6.StarterWeb
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
         {
-            //required to store SP Cache Key session data
-            app.UseSession();
-
+            #region Logging
             loggerFactory.AddConsole(Configuration.GetSection("Logging"));
             loggerFactory.AddDebug();
 
@@ -53,23 +54,52 @@ namespace AspNet5.Mvc6.StarterWeb
             {
                 app.UseExceptionHandler("/Home/Error");
             }
-
-            //Configuer SSL, only needed due to Kestrel
-            //TODO: inject through IOptions and appconfig.json
-            // Should Not be a concern of the application
-            WebServerConfig.ConfigureSSL(app, Path.Combine(env.WebRootPath, @"../../cert/office365flask.pfx"), "pass@word1");
+            #endregion
 
             app.UseStaticFiles();
 
-            //Required to do client session management, but uses the schema of our middleware
-            app.UseCookieAuthentication(new SharePointAuthenticationCookieOptions().ApplicationCookie);
+            //Configuer SSL, only needed due to Kestrel and server/host management in ASP.NET Core
+            WebServerConfig.ConfigureSSL(
+                app,
+                Path.Combine(env.WebRootPath, Configuration["WebServerSettings:CertificateFilePath"]),
+                Configuration["WebServerSettings:CertificatePassword"]
+            );
+
+            //required to store SP Cache Key session data
+            app.UseSession();
+
+            //UseCookieAuthentication is required to do client session management
+            //It is set to use the Authentication schema of our middleware
+            app.UseCookieAuthentication(new CookieAuthenticationOptions()
+                {
+                    AutomaticAuthenticate = true,
+                    CookieHttpOnly = false, //set to false so we can read it from JavaScript
+                    AutomaticChallenge = false,
+                    AuthenticationScheme = "AspNet.ApplicationCookie",
+                    ExpireTimeSpan = System.TimeSpan.FromDays(14),
+                    LoginPath = "/account/login"
+                }
+            );
 
             //Add SharePoint authentication capabilities
-            app.UseSharePointAuthentication(new SharePointAuthenticationOptions()
+            app.UseSharePointAuthentication(
+                new SharePointAuthenticationOptions()
                 {
-                    RequireHttpsMetadata = true,
+                    AutomaticChallenge = false,
+                    CookieAuthenticationScheme = "AspNet.ApplicationCookie",
                     ClientId = Configuration["SharePointAuthentication:ClientId"],
-                    ClientSecret = Configuration["SharePointAuthentication:ClientSecret"]
+                    ClientSecret = Configuration["SharePointAuthentication:ClientSecret"],
+                    Events = new SharePointAuthenticationEvents()
+                    {
+                        OnAuthenticationSucceeded = succeededContext =>
+                        {
+                            return Task.FromResult<object>(null);
+                        },
+                        OnAuthenticationFailed = failedContext =>
+                        {
+                            return Task.FromResult<object>(null);
+                        }
+                    }
                 }
             );
 

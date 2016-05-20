@@ -8,6 +8,9 @@ using System.Linq;
 
 namespace OfficeDevPnP.Core.Framework.Authentication
 {
+    /// <summary>
+    /// Handles the authentication mechanism for SP Provider Hosted Apps
+    /// </summary>
     public class SharePointAuthenticationHandler : AuthenticationHandler<SharePointAuthenticationOptions>
     {
         /// <summary>
@@ -43,7 +46,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
                     // Gets the SharePoint context CacheKey. The CacheKey would be assigned as issuer for new claim.
                     // It is also used to validate identity that is authenticated.
-                    //TODO: would not work with HighTrust at the moment
+                    //Currently, we don't support High Trust
                     var userCacheKey = ((SharePointAcsContext)spContext).CacheKey; 
 
                     // Checks if we already have an authenticated principal
@@ -79,8 +82,6 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                             await Context.Authentication.SignInAsync
                                   (this.Options.CookieAuthenticationScheme, principal, authenticationProperties); 
                         }
-
-
                     }
 
                     // Creates the authentication ticket.
@@ -114,26 +115,34 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 case RedirectionStatus.CanNotRedirect:
                     _redirectionStatus = RedirectionStatus.CanNotRedirect;
 
+                    //There's a potential issue here if this is not the only auth middleware
+                    //setting the response to 401 might not be safe for the other middlewares
                     Response.StatusCode = 401;
                     result = AuthenticateResult.Failed("CanNotRedirect");
+                    
+                    //Log that we cannot redirect
+                    LoggingExtensions.CannotRedirect(this.Logger);
 
                     //Throw failed event
                     await Options.Events.AuthenticationFailed(new Events.AuthenticationFailedContext(Context, Options));
 
-                    //Log that we cannot redirect
-                    LoggingExtensions.CannotRedirect(this.Logger);
                     break;
             }
+
             return result;
         }
          
         protected override async Task HandleSignInAsync(SignInContext context)
         { 
-            //no need to call base as it doesn't do anything
+            //no real need to call base as it doesn't do anything
             await base.HandleSignInAsync(context); 
             SignInAccepted = true; 
         } 
         
+        /// <summary>
+        /// Fires on each request, allowing the capture of ShouldRedirect
+        /// </summary>
+        /// <returns></returns>
         public override async Task<bool> HandleRequestAsync()
         {
             if (_redirectionStatus == RedirectionStatus.ShouldRedirect)
@@ -141,10 +150,15 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 // Stops the execution of next middlewares since redirect to SharePoint is required.
                 return await Task.FromResult(true);
             }
+
             return await base.HandleRequestAsync();
         }
 
-
+        /// <summary>
+        /// Overrides Sign Out logic
+        /// </summary>
+        /// <param name="context"></param>
+        /// <returns></returns>
         protected override async Task HandleSignOutAsync(SignOutContext context)
         {
             if (!string.IsNullOrWhiteSpace(this.Options.CookieAuthenticationScheme))
@@ -152,6 +166,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 await Context.Authentication.SignOutAsync(this.Options.CookieAuthenticationScheme);
                 await base.HandleSignOutAsync(context);
             }
+
             SignOutAccepted = true;
         }
     }

@@ -28,25 +28,10 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             SharePointAuthenticationOptions options)
             : base(nextMiddleware, options, loggerFactory, encoder)
         {
-            if (nextMiddleware == null)
-            {
-                throw new ArgumentNullException(nameof(nextMiddleware));
-            }
-
-            if (loggerFactory == null)
-            {
-                throw new ArgumentNullException(nameof(loggerFactory));
-            }
-
-            if (encoder == null)
-            {
-                throw new ArgumentNullException(nameof(encoder));
-            }
-
-            if (options == null)
-            {
-                throw new ArgumentNullException(nameof(options));
-            }
+            if (nextMiddleware == null) { throw new ArgumentNullException(nameof(nextMiddleware)); }
+            if (loggerFactory == null) { throw new ArgumentNullException(nameof(loggerFactory)); }
+            if (encoder == null) { throw new ArgumentNullException(nameof(encoder)); }
+            if (options == null) { throw new ArgumentNullException(nameof(options)); }
 
             _nextMiddleware = nextMiddleware;
         }
