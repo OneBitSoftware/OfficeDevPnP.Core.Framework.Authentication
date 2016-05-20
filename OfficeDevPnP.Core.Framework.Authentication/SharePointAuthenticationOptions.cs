@@ -4,6 +4,9 @@ using OfficeDevPnP.Core.Framework.Authentication.Events;
 
 namespace OfficeDevPnP.Core.Framework.Authentication
 {
+    /// <summary>
+    /// Creates an instance and sets default values of the Authentication Options for the middleware
+    /// </summary>
     public class SharePointAuthenticationOptions : AuthenticationOptions
     {
         /// <summary>

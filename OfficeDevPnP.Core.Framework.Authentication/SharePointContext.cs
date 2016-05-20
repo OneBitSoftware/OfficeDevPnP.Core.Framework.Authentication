@@ -44,19 +44,17 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// </summary>
         /// <param name="httpRequest">The specified HTTP request.</param>
         /// <returns>The SharePoint host url. Returns <c>null</c> if the HTTP request doesn't contain the SharePoint host url.</returns>
-        public static Uri GetSPHostUrl(HttpRequest httpRequest)
+        public static Uri GetUriFromQueryStringParameter(HttpRequest httpRequest, string queryStringParameter)
         {
-            if (httpRequest == null)
-            {
-                throw new ArgumentNullException(nameof(httpRequest));
-            }
+            if (httpRequest == null) { throw new ArgumentNullException(nameof(httpRequest)); }
 
-            string spHostUrlString = TokenHandler.EnsureTrailingSlash(httpRequest.Query[SPHostUrlKey]);
-            Uri spHostUrl;
-            if (Uri.TryCreate(spHostUrlString, UriKind.Absolute, out spHostUrl) &&
-                (spHostUrl.Scheme == Uri.UriSchemeHttp || spHostUrl.Scheme == Uri.UriSchemeHttps))
+            string parameterValue = TokenHandler.EnsureTrailingSlash(httpRequest.Query[queryStringParameter]);
+            Uri uriValue;
+
+            if (Uri.TryCreate(parameterValue, UriKind.Absolute, out uriValue) &&
+               (uriValue.Scheme == Uri.UriSchemeHttp || uriValue.Scheme == Uri.UriSchemeHttps))
             {
-                return spHostUrl;
+                return uriValue;
             }
 
             return null;
@@ -361,14 +359,13 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
             const string SPHasRedirectedToSharePointKey = "SPHasRedirectedToSharePoint";
 
-
-            
             if (!string.IsNullOrEmpty(httpContext.Request.Query[SPHasRedirectedToSharePointKey]) && !contextTokenExpired)
             {
                 return RedirectionStatus.CanNotRedirect;
             }
 
-            Uri spHostUrl = SharePointContext.GetSPHostUrl(httpContext.Request);
+            Uri spHostUrl = SharePointContext.GetUriFromQueryStringParameter
+                (httpContext.Request, SharePointContext.SPHostUrlKey);
 
             if (spHostUrl == null)
             {
@@ -380,7 +377,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 return RedirectionStatus.CanNotRedirect;
             }
             var uri = GetCurrentUrl(httpContext);
-            Uri requestUrl = new Uri(uri); 
+            Uri requestUrl = new Uri(uri);
 
             var queryNameValueCollection = HttpUtility.ParseQueryString(requestUrl.Query);
 
@@ -420,7 +417,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         private static string GetCurrentUrl(HttpContext httpContext)
         {
             var url = httpContext.Request.GetDisplayUrl();
-            //compare request sheme
+            //compare request scheme
             var serverScheme = ((Microsoft.AspNet.Server.Kestrel.Http.ListenerContext)
                 ((Microsoft.AspNet.Http.Internal.DefaultHttpContext)httpContext).Features).ServerAddress.Scheme;
 
@@ -438,17 +435,11 @@ namespace OfficeDevPnP.Core.Framework.Authentication
         /// <returns>The SharePointContext instance. Returns <c>null</c> if errors occur.</returns>
         public SharePointContext CreateSharePointContext(HttpRequest httpRequest)
         {
-            if (httpRequest == null)
-            {
-                throw new ArgumentNullException(nameof(httpRequest));
-            }
+            if (httpRequest == null) { throw new ArgumentNullException(nameof(httpRequest)); }
 
             // SPHostUrl
-            Uri spHostUrl = SharePointContext.GetSPHostUrl(httpRequest);
-            if (spHostUrl == null)
-            {
-                return null;
-            }
+            Uri spHostUrl = SharePointContext.GetUriFromQueryStringParameter(httpRequest, SharePointContext.SPHostUrlKey);
+            if (spHostUrl == null) { throw new ArgumentException("The SPHostUrl query string parameter is null, empty or invalid."); }
 
             // SPAppWebUrl
             string spAppWebUrlString = TokenHandler.EnsureTrailingSlash(httpRequest.Query[SharePointContext.SPAppWebUrlKey]);
@@ -463,21 +454,21 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             string spLanguage = httpRequest.Query[SharePointContext.SPLanguageKey];
             if (string.IsNullOrEmpty(spLanguage))
             {
-                return null;
+                throw new ArgumentException("The SPLanguage query string parameter is null, empty or invalid.");
             }
 
             // SPClientTag
             string spClientTag = httpRequest.Query[SharePointContext.SPClientTagKey];
             if (string.IsNullOrEmpty(spClientTag))
             {
-                return null;
+                throw new ArgumentException("The SPClientTag query string parameter is null, empty or invalid.");
             }
 
             // SPProductNumber
             string spProductNumber = httpRequest.Query[SharePointContext.SPProductNumberKey];
             if (string.IsNullOrEmpty(spProductNumber))
             {
-                return null;
+                throw new ArgumentException("The SPProductNumber query string parameter is null, empty or invalid.");
             }
 
             return CreateSharePointContext(spHostUrl, spAppWebUrl, spLanguage, spClientTag, spProductNumber, httpRequest);
@@ -495,7 +486,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
                 throw new ArgumentNullException(nameof(httpContext));
             }
 
-            Uri spHostUrl = SharePointContext.GetSPHostUrl(httpContext.Request);
+            Uri spHostUrl = SharePointContext.GetUriFromQueryStringParameter(httpContext.Request, SharePointContext.SPHostUrlKey);
             if (spHostUrl == null)
             {
                 return null;
@@ -586,7 +577,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             get { return this.contextTokenObj.ValidTo > DateTime.UtcNow ? this.contextTokenObj.RefreshToken : null; }
         }
 
-        
+
 
         public override string UserAccessTokenForSPHost
         {
@@ -738,7 +729,9 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             //Checks for the SPCacheKey cookie and gets the value
             if (spAcsContext != null)
             {
-                Uri spHostUrl = SharePointContext.GetSPHostUrl(httpContext.Request);
+                Uri spHostUrl = SharePointContext.GetUriFromQueryStringParameter
+                    (httpContext.Request, SharePointContext.SPHostUrlKey);
+
                 string contextToken = TokenHandler.GetContextTokenFromRequest(httpContext.Request);
                 HttpCookie spCacheKeyCookie = new HttpCookie(SPCacheKeyKey, httpContext.Request.Cookies[SPCacheKeyKey]);
                 string spCacheKey = spCacheKeyCookie != null ? spCacheKeyCookie.Value : null;
@@ -767,7 +760,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             string acsSessionContext = new string(chars);
             var dto = JsonConvert.DeserializeObject<SharePointSessionData>(acsSessionContext);
             var contextTokenObj = TokenHandler.ReadAndValidateContextToken(dto.ContextToken, httpContext.Request.Host.Value);
-            return new SharePointAcsContext(dto.SpHostUrl,dto.SpAppWebUrl,dto.SpLanguage,dto.SpClientTag,dto.SpProductNumber,dto.ContextToken, contextTokenObj, Configuration);
+            return new SharePointAcsContext(dto.SpHostUrl, dto.SpAppWebUrl, dto.SpLanguage, dto.SpClientTag, dto.SpProductNumber, dto.ContextToken, contextTokenObj, Configuration);
         }
 
         protected override void SaveSharePointContext(SharePointContext spContext, HttpContext httpContext)
@@ -803,6 +796,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication
     #endregion ACS
 
     #region HighTrust
+    //TODO: still to be implemented...
 
     /// <summary>
     /// Encapsulates all the information from SharePoint in HighTrust mode.
