@@ -1,50 +1,45 @@
 ﻿using Microsoft.AspNet.Authentication;
 using Microsoft.AspNet.Builder;
-using Microsoft.AspNet.Http;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.OptionsModel;
 using Microsoft.Extensions.WebEncoders;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace OfficeDevPnP.Core.Framework.Authentication
 {
+    /// <summary>
+    /// An ASP.NET Core middleware for authenticating users using SharePoint.
+    /// </summary>
     public class SharePointAuthenticationMiddleware :
         AuthenticationMiddleware<SharePointAuthenticationOptions>
     {
-        private readonly RequestDelegate _next;
+        private readonly RequestDelegate _nextMiddleware;
 
+        /// <summary>
+        /// Initializes a new <see cref="SharePointAuthenticationMiddleware"/>.
+        /// </summary>
+        /// <param name="next">The next middleware in the HTTP pipeline to invoke.</param>
+        /// <param name="loggerFactory"></param>
+        /// <param name="encoder"></param>
+        /// <param name="options">Configuration options for the middleware.</param>
         public SharePointAuthenticationMiddleware(
-            RequestDelegate next,
+            RequestDelegate nextMiddleware,
             ILoggerFactory loggerFactory,
             IUrlEncoder encoder,
             SharePointAuthenticationOptions options)
-            : base(next, options, loggerFactory, encoder)
+            : base(nextMiddleware, options, loggerFactory, encoder)
         {
-            if (next == null)
-            {
-                throw new ArgumentNullException(nameof(next));
-            }
+            if (nextMiddleware == null) { throw new ArgumentNullException(nameof(nextMiddleware)); }
+            if (loggerFactory == null) { throw new ArgumentNullException(nameof(loggerFactory)); }
+            if (encoder == null) { throw new ArgumentNullException(nameof(encoder)); }
+            if (options == null) { throw new ArgumentNullException(nameof(options)); }
 
-            if (loggerFactory == null)
-            {
-                throw new ArgumentNullException(nameof(loggerFactory));
-            }
-
-            if (encoder == null)
-            {
-                throw new ArgumentNullException(nameof(encoder));
-            }
-
-            if (options == null)
-            {
-                throw new ArgumentNullException(nameof(options));
-            }
-            _next = next;
+            _nextMiddleware = nextMiddleware;
         }
 
+        /// <summary>
+        /// Provides the <see cref="AuthenticationHandler{T}"/> object for processing authentication-related requests.
+        /// </summary>
+        /// <returns>An <see cref="AuthenticationHandler{T}"/> configured with the <see cref="SharePointAuthenticationOptions"/> supplied to the constructor.</returns>
         protected override AuthenticationHandler<SharePointAuthenticationOptions> CreateHandler()
         {
             return new SharePointAuthenticationHandler();

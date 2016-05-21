@@ -1,14 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System.IO;
 using Microsoft.AspNet.Builder;
 using Microsoft.AspNet.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-
 using OfficeDevPnP.Core.Framework.Authentication;
+using Microsoft.AspNet.Authentication.Cookies;
+using OfficeDevPnP.Core.Framework.Authentication.Events;
+using System.Threading.Tasks;
 
 namespace AspNet5.Mvc6.StarterWeb
 {
@@ -28,8 +28,11 @@ namespace AspNet5.Mvc6.StarterWeb
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-
-            services.AddAuthentication();
+            services.AddCaching();
+            services.AddSession(o =>
+            {
+                o.IdleTimeout = TimeSpan.FromSeconds(3600);
+            });
 
             // Add framework services.
             services.AddMvc();
@@ -38,6 +41,7 @@ namespace AspNet5.Mvc6.StarterWeb
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
         {
+            #region Logging
             loggerFactory.AddConsole(Configuration.GetSection("Logging"));
             loggerFactory.AddDebug();
 
@@ -50,18 +54,56 @@ namespace AspNet5.Mvc6.StarterWeb
             {
                 app.UseExceptionHandler("/Home/Error");
             }
-
-            app.UseIISPlatformHandler();
+            #endregion
 
             app.UseStaticFiles();
 
-            //Add SharePoint authentication capabilities
-            app.UseSharePointAuthentication(new SharePointAuthenticationOptions()
+            //Configuer SSL, only needed due to Kestrel and server/host management in ASP.NET Core
+            WebServerConfig.ConfigureSSL(
+                app,
+                Path.Combine(env.WebRootPath, Configuration["WebServerSettings:CertificateFilePath"]),
+                Configuration["WebServerSettings:CertificatePassword"]
+            );
+
+            //required to store SP Cache Key session data
+            app.UseSession();
+
+            //UseCookieAuthentication is required to do client session management
+            //It is set to use the Authentication schema of our middleware
+            app.UseCookieAuthentication(new CookieAuthenticationOptions()
                 {
-                    RequireHttpsMetadata = true
+                    AutomaticAuthenticate = true,
+                    CookieHttpOnly = false, //set to false so we can read it from JavaScript
+                    AutomaticChallenge = false,
+                    AuthenticationScheme = "AspNet.ApplicationCookie",
+                    ExpireTimeSpan = System.TimeSpan.FromDays(14),
+                    LoginPath = "/account/login"
                 }
             );
 
+            //Add SharePoint authentication capabilities
+            app.UseSharePointAuthentication(
+                new SharePointAuthenticationOptions()
+                {
+                    AutomaticChallenge = false,
+                    CookieAuthenticationScheme = "AspNet.ApplicationCookie",
+                    ClientId = Configuration["SharePointAuthentication:ClientId"],
+                    ClientSecret = Configuration["SharePointAuthentication:ClientSecret"],
+                    Events = new SharePointAuthenticationEvents()
+                    {
+                        OnAuthenticationSucceeded = succeededContext =>
+                        {
+                            return Task.FromResult<object>(null);
+                        },
+                        OnAuthenticationFailed = failedContext =>
+                        {
+                            return Task.FromResult<object>(null);
+                        }
+                    }
+                }
+            );
+
+            //set up MVC routes
             app.UseMvc(routes =>
             {
                 routes.MapRoute(

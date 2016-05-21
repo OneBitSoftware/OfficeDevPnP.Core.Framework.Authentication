@@ -24,7 +24,7 @@ namespace OfficeDevPnP.Core.Framework.Authentication.S2S
 
         public override string GetIssuerName(SecurityToken securityToken)
         {
-            if (securityToken == null) throw new ArgumentException("securityToken"));
+            if (securityToken == null) throw new ArgumentException("securityToken");
 
             string str = null;
             BinarySecretSecurityToken binarySecretSecurityToken = securityToken as BinarySecretSecurityToken;
