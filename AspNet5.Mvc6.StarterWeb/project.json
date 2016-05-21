@@ -28,7 +28,7 @@
     "Microsoft.AspNet.Identity": "3.0.0-rc1-final"
   },
   "commands": {
-    "web": "Microsoft.AspNet.Hosting --server Microsoft.AspNet.Server.Kestrel --server.urls https://localhost:7000"
+    "web": "Microsoft.AspNet.Hosting --server Microsoft.AspNet.Server.Kestrel --server.urls https://localhost:44379"
   },
 
   "frameworks": {
