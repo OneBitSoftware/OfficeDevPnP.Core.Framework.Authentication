@@ -431,32 +431,23 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
             // SPHostUrl
             Uri spHostUrl = SharePointContext.GetUriFromQueryStringParameter(httpRequest, SharePointContext.SPHostUrlKey);
-            if (spHostUrl == null) { throw new ArgumentException("The SPHostUrl query string parameter is null, empty or invalid."); }
+            if (spHostUrl == null) { return null; }
 
             // SPAppWebUrl
             Uri spAppWebUrl = SharePointContext.GetUriFromQueryStringParameter(httpRequest, SharePointContext.SPAppWebUrlKey);
-            if (spAppWebUrl == null) { throw new ArgumentException("The SPAppWebUrl query string parameter is null, empty or invalid."); }
+            if (spAppWebUrl == null) { spAppWebUrl = null; }
 
             // SPLanguage
             string spLanguage = httpRequest.Query[SharePointContext.SPLanguageKey];
-            if (string.IsNullOrEmpty(spLanguage))
-            {
-                throw new ArgumentException("The SPLanguage query string parameter is null, empty or invalid.");
-            }
+            if (string.IsNullOrEmpty(spLanguage)) { return null; }
 
             // SPClientTag
             string spClientTag = httpRequest.Query[SharePointContext.SPClientTagKey];
-            if (string.IsNullOrEmpty(spClientTag))
-            {
-                throw new ArgumentException("The SPClientTag query string parameter is null, empty or invalid.");
-            }
+            if (string.IsNullOrEmpty(spClientTag)) { return null; }
 
             // SPProductNumber
             string spProductNumber = httpRequest.Query[SharePointContext.SPProductNumberKey];
-            if (string.IsNullOrEmpty(spProductNumber))
-            {
-                throw new ArgumentException("The SPProductNumber query string parameter is null, empty or invalid.");
-            }
+            if (string.IsNullOrEmpty(spProductNumber)) { return null; }
 
             return CreateSharePointContext(spHostUrl, spAppWebUrl, spLanguage, spClientTag, spProductNumber, httpRequest);
         }
@@ -697,11 +688,11 @@ namespace OfficeDevPnP.Core.Framework.Authentication
             {
                 contextToken = TokenHandler.ReadAndValidateContextToken(contextTokenString, httpRequest.Host.Value);
             }
-            catch (WebException)
+            catch (WebException ex)
             {
                 return null;
             }
-            catch (AudienceUriValidationFailedException)
+            catch (AudienceUriValidationFailedException aex)
             {
                 return null;
             }

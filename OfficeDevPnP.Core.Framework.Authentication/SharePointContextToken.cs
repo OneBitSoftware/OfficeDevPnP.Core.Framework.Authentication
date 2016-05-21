@@ -11,7 +11,6 @@ namespace OfficeDevPnP.Core.Framework.Authentication
     /// </summary>
     public class SharePointContextToken : JsonWebSecurityToken
     {
-
         public static SharePointContextToken Create(JsonWebSecurityToken contextToken)
         {
             return new SharePointContextToken(contextToken.Issuer, contextToken.Audience, contextToken.ValidFrom, contextToken.ValidTo, contextToken.Claims);
@@ -126,6 +125,5 @@ namespace OfficeDevPnP.Core.Framework.Authentication
 
             return null;
         }
-
     }
 }
